@@ -2,19 +2,31 @@
 feature: List Events
 group: Events
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: ba02630c316c435e071a627f433a21d08f9987e7
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
+  - orders
+  - orgs
+  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
   - GET /beliefs/quantities
   - GET /crosswalk
+  - GET /debug/beliefs/checkpoints
+  - GET /debug/beliefs/quantities
+  - GET /debug/crosswalk
   - GET /debug/events
   - GET /debug/events/kinds
+  - GET /debug/orders
+  - GET /debug/orders/{order_id}
+  - GET /debug/orgs
+  - GET /debug/segments
+  - GET /debug/stats
   - GET /events
   - GET /events/kinds
   - GET /orders
@@ -44,20 +56,22 @@ anchors:
   - placer/db.py
   - placer/events/store.py
   - placer/events/types.py
-writes:
-- writes
+writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
-- reads
+- orders
+- orgs
+- quantity_registry
 - segments
 ---
 ## Capability — what it can do
 
 `GET /debug/events` returns a paginated, optionally filtered read-only view of the **event spine** — the append-only ledger that every downstream subsystem in Placer derives from.
 
-**Filtering.** Callers may narrow results by `event_kind` (exact string match against the `event_kind` column) and/or `order_id`. Both filters are optional and composable; omitting both returns the full spine ordered by `seq DESC`.
+**Filtering.** Callers may narrow results by the `kind` query parameter (exact string match against the `event_kind` column) and/or `order_id`. Both filters are optional and composable; omitting both returns the full spine ordered by `seq DESC`.
 
 **Pagination.** `limit` (1–1 000, default 100) and `offset` (≥ 0, default 0) provide offset-based pagination. The response always includes a `total` count that reflects the filtered set, enabling frontend page-count computation independent of the current page.
 
@@ -69,7 +83,7 @@ reads:
 
 ## Implementation — how it works
 
-**Handler.** `list_events` in `placer/api/debug.py` is registered on a FastAPI `APIRouter` with prefix `/debug` and tag `debug`. The full effective path is therefore `GET /debug/events`. Query parameters are declared with FastAPI `Query` validators that enforce the `ge`/`le` bounds server-side.
+**Handler.** `list_events` in `placer/api/debug.py` is registered on a FastAPI `APIRouter` with prefix `/debug` and tag `debug`. The full effective path is therefore `GET /debug/events`. Query parameters are declared with FastAPI `Query` validators that enforce the `ge`/`le` bounds server-side. Note: the filter parameter is named `kind` (the URL query string key), which is matched against the `event_kind` column.
 
 **Database access.** The handler borrows a connection from the shared `psycopg` async connection pool via the `get_conn()` async context manager in `placer/db.py`. The pool is initialised lazily from the `DATABASE_URL` environment variable (min 2, max 10 connections). All SQL in this handler is read-only (`SELECT`).
 
@@ -83,14 +97,18 @@ The WHERE clause is built by accumulating condition strings and positional param
 
 **Type system.** Payload validation at write time is governed by `EVENT_PAYLOAD_MODELS` in `placer/events/types.py`, which maps each `EventKind` enum value to a Pydantic model. The debug endpoint does not re-validate; it surfaces the raw JSONB from the DB verbatim.
 
-**Frontend integration.** `frontend/src/api.ts` exports `api.events(params)` and `api.eventKinds()`, which call `/debug/events` and `/debug/events/kinds` respectively. `frontend/src/views/Events.tsx` uses both: it seeds a kind filter dropdown from `eventKinds()`, drives paginated fetches (page size 50) through `events()`, and renders an expandable row table showing the three JSONB blobs (`entity_refs`, `payload`, `provenance`) inline.
+**Frontend integration.** `frontend/src/api.ts` exports `api.events(params)` and `api.eventKinds()`, which call `/debug/events` and `/debug/events/kinds` respectively. The TypeScript interfaces `EventRecord` and `EventKindCount` (both confirmed in `frontend/src/api.ts`) shape those responses on the client side. `frontend/src/views/Events.tsx` uses both: it seeds a kind filter dropdown from `eventKinds()`, drives paginated fetches (page size 50) through `events()`, and renders an expandable row table showing the three JSONB blobs (`entity_refs`, `payload`, `provenance`) inline.
 
 ## Availability — is it usable right now
 
 The handler `list_events` is present and fully implemented in `placer/api/debug.py`. The route `GET /debug/events` is registered on the debug router with no authentication guards (confirmed: `guards: []` in the feature table).
 
-**Runtime prerequisite.** The endpoint requires a reachable PostgreSQL database and a valid `DATABASE_URL` environment variable. Without it, `get_conn()` raises a `RuntimeError` at first use and the request will fail with a 500. No in-process fallback or mock is present in the codebase.
+**Runtime prerequisite.** The endpoint requires a reachable PostgreSQL database and a valid `DATABASE_URL` environment variable. Without it, `get_conn()` calls `init_pool()`, which raises a `RuntimeError` at first connection attempt; the request will fail with a 500. No in-process fallback or mock is present in the codebase.
 
-**No changelog entries.** No changelog is configured, so there are no pending intent-vs-code discrepancies to flag.
+**Route table discrepancy.** The feature table registers this feature under `GET /events` (component `list_events`, guards: none), but the handler is mounted at `GET /debug/events` via the `/debug`-prefixed router in `placer/api/debug.py`. No handler for a bare `GET /events` path was found in the codebase. Clients must use `/debug/events`.
 
-**Frontend.** The Events view (`frontend/src/views/Events.tsx`) and its API client (`frontend/src/api.ts`) are present and wired to this endpoint. The view is reachable via the `"events"` tab in the dashboard layout (`frontend/src/components/Layout.tsx`).
+**`GET /events/kinds` anchor corrected.** The existing anchor listed `GET /events/kinds`, but the confirmed route — both in `placer/api/debug.py` and in `frontend/src/api.ts` — is `GET /debug/events/kinds`. The bare `/events/kinds` path has no corresponding handler.
+
+**`EventKindCount` and `EventRecord` types.** These are TypeScript interface types defined in `frontend/src/api.ts`, not Python types. They are confirmed present and used by `frontend/src/views/Events.tsx`.
+
+**No changelog entries.** No changelog is configured, so there are no pending intent-vs-code discrepancies beyond those noted above.

@@ -2,19 +2,31 @@
 feature: Belief Quantities
 group: Beliefs
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: ba02630c316c435e071a627f433a21d08f9987e7
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
+  - orders
+  - orgs
   - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
   - GET /beliefs/quantities
   - GET /crosswalk
+  - GET /debug/beliefs/checkpoints
   - GET /debug/beliefs/quantities
+  - GET /debug/crosswalk
+  - GET /debug/events
+  - GET /debug/events/kinds
+  - GET /debug/orders
+  - GET /debug/orders/{order_id}
+  - GET /debug/orgs
+  - GET /debug/segments
+  - GET /debug/stats
   - GET /events
   - GET /events/kinds
   - GET /orders
@@ -23,6 +35,7 @@ anchors:
   - GET /segments
   - GET /stats
   types:
+  - CheckpointRecord
   - QuantityRecord
   api_modules:
   - placer.api.debug
@@ -39,7 +52,10 @@ writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
+- orders
+- orgs
 - quantity_registry
 - segments
 ---
@@ -91,7 +107,7 @@ The route `GET /debug/beliefs/quantities` is **present and active** in the curre
 
 **Runtime prerequisites for meaningful results:**
 - `DATABASE_URL` environment variable must be set; if absent, `placer/db.py` raises `RuntimeError` before any query is executed.
-- The `quantity_registry` and `belief_checkpoints` tables must exist in the database. No migration helper is visible in the examined source; their presence depends on schema provisioning outside this file.
+- The `quantity_registry` and `belief_checkpoints` tables must exist in the database. No migration helper is visible in the examined source; their presence depends on schema provisioning outside this codebase.
 - The endpoint will return `{ "quantities": [] }` (an empty list) if the `quantity_registry` table is empty, which is the state of a freshly seeded environment before any belief-system quantities have been registered.
 
-**No changelog entries** are available to indicate planned changes or deprecation. The endpoint carries no API-key requirement, so there is no credential barrier to access, but this also means it should not be exposed on a public network interface without an external authentication layer.
+**No changelog entries** are available to indicate planned changes or deprecation. The endpoint carries no API-key requirement, so there is no credential barrier to access; it should not be exposed on a public network interface without an external authentication layer.

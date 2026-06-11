@@ -2,12 +2,14 @@
 feature: List Orgs
 group: Organizations
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: ba02630c316c435e071a627f433a21d08f9987e7
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
+  - orders
   - orgs
   - segments
   endpoints:
@@ -49,9 +51,12 @@ writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
 - frontend/src/api.ts
 - frontend/src/views/Candidates.tsx
+- orders
+- orgs
 - placer/api/debug.py
 - placer/db.py
 - placer/identity/store.py
@@ -78,20 +83,20 @@ The registry is a **lazy write-once structure**: rows are minted by `identity.st
 
 **Handler** — `list_orgs` in `placer/api/debug.py`, mounted on the `APIRouter` at prefix `/debug` with tag `debug`. The effective path is therefore `GET /debug/orgs`.
 
-**Database access** — A single `SELECT org_id, ein, resolution_confidence, first_seen_seq, memberships FROM orgs ORDER BY first_seen_seq DESC LIMIT %s` is issued against the `orgs` table. The connection is acquired from the shared async `psycopg_pool.AsyncConnectionPool` managed by `placer/db.py`, which is initialised lazily from the `DATABASE_URL` environment variable and capped at ten connections.
+**Database access** — A single `SELECT org_id, ein, resolution_confidence, first_seen_seq, memberships FROM orgs ORDER BY first_seen_seq DESC LIMIT %s` is issued against the `orgs` table. The connection is acquired from the shared async `psycopg_pool.AsyncConnectionPool` managed by `placer/db.py`, which is initialised lazily from the `DATABASE_URL` environment variable with `min_size=2` and `max_size=10` connections.
 
 **Serialisation** — Each database row is projected into a plain Python dict. `memberships` is returned as-is (the driver deserialises the Postgres JSONB column automatically); no Pydantic model is used at the API layer. The response envelope is `{"orgs": [...]}`.
 
-**Identity model** — Org rows are originally written by `placer/identity/store.py::mint_org`, which inserts with `ON CONFLICT (org_id) DO NOTHING`. `resolve_org` performs the EIN lookup that precedes minting. The `OrgRecord`, `OrgMemberships`, `ResolutionConfidence`, and related types are defined in `placer/identity/types.py`.
+**Identity model** — Org rows are originally written by `placer/identity/store.py::mint_org`, which inserts with `ON CONFLICT (org_id) DO NOTHING`. `resolve_org` performs the EIN lookup that precedes minting; a separate `get_org` function enables point-lookup by `org_id` at the store layer. The `OrgRecord`, `OrgMemberships`, `ResolutionConfidence`, and related types are defined in `placer/identity/types.py`.
 
-**Frontend consumption** — The TypeScript client in `frontend/src/api.ts` calls `api.orgs()` → `GET /debug/orgs` and types the response with the `OrgRecord` interface. The result is rendered in the **Org Registry** sub-tab of `frontend/src/views/Candidates.tsx`, which displays org ID, EIN, a colour-coded confidence badge (`high` → green, `medium` → yellow, `provisional` → zinc), first-seen sequence, and a truncated JSON rendering of memberships.
+**Frontend consumption** — The TypeScript client in `frontend/src/api.ts` calls `api.orgs()` → `GET /debug/orgs` and types the response with the `OrgRecord` interface. The result is rendered in the **Org Registry** sub-tab of `frontend/src/views/Candidates.tsx`, which lazy-loads on tab activation and displays org ID, EIN, a colour-coded confidence badge (`high` → green, `medium` → yellow, `provisional` → zinc), first-seen sequence, and a truncated JSON rendering of memberships.
 
 ## Availability — is it usable right now
 
-The endpoint handler `list_orgs` is present and complete in `placer/api/debug.py`. It carries no authentication guards and is part of the `debug` router, meaning it is available to any caller that can reach the API server — no API key is required.
+The handler `list_orgs` is present and complete in `placer/api/debug.py`. It carries no authentication guards and is part of the `debug` router, meaning it is available to any caller that can reach the API server — no API key is required.
 
 Operability depends on:
-- The `DATABASE_URL` environment variable being set and pointing to a reachable Postgres instance; the connection pool raises `RuntimeError` at first query otherwise.
+- The `DATABASE_URL` environment variable being set and pointing to a reachable Postgres instance; `placer/db.py` raises `RuntimeError("DATABASE_URL not set")` before any query can execute if the variable is absent.
 - The `orgs` table existing in the target database with the columns `org_id`, `ein`, `resolution_confidence`, `first_seen_seq`, and `memberships`.
 
-No changelog entries were found, so there is no staged or announced change to this endpoint's behaviour. The frontend Candidates view actively consumes this endpoint via `api.orgs()` in the Org Registry sub-tab, confirming end-to-end wiring in the current codebase.
+No changelog entries are configured, so there is no record of staged or announced changes to this endpoint's behaviour. The frontend `Candidates.tsx` view actively consumes this endpoint via `api.orgs()` in the Org Registry sub-tab (lazy-loaded on tab switch), confirming end-to-end wiring in the current codebase.

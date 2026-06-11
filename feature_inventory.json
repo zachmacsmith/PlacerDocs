@@ -378,6 +378,76 @@
       "feature_name": "Health Check",
       "group": "System",
       "page_file": "Health Check.md"
+    },
+    {
+      "route": "/view/beliefs",
+      "nav_title": "Beliefs",
+      "component": "Beliefs",
+      "component_file": "frontend/src/views/Beliefs.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Beliefs (View)",
+      "group": "New",
+      "page_file": "Beliefs (View).md"
+    },
+    {
+      "route": "/view/candidates",
+      "nav_title": "Candidates",
+      "component": "Candidates",
+      "component_file": "frontend/src/views/Candidates.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Candidates (View)",
+      "group": "New",
+      "page_file": "Candidates (View).md"
+    },
+    {
+      "route": "/view/events",
+      "nav_title": "Events",
+      "component": "Events",
+      "component_file": "frontend/src/views/Events.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Events (View)",
+      "group": "New",
+      "page_file": "Events (View).md"
+    },
+    {
+      "route": "/view/orders",
+      "nav_title": "Orders",
+      "component": "Orders",
+      "component_file": "frontend/src/views/Orders.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Orders",
+      "group": "New",
+      "page_file": "Orders.md"
+    },
+    {
+      "route": "/view/overview",
+      "nav_title": "Overview",
+      "component": "Overview",
+      "component_file": "frontend/src/views/Overview.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Overview",
+      "group": "New",
+      "page_file": "Overview.md"
     }
   ],
   "generated_at": "2026-06-11T15:36:24Z"
