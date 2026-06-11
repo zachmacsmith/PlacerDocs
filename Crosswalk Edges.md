@@ -2,16 +2,13 @@
 feature: Crosswalk Edges
 group: Segments
 last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
   - belief_checkpoints
   - candidates
-  - crosswalk_edges
   - events
   - orders
-  - orgs
-  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
@@ -24,36 +21,24 @@ anchors:
   - GET /orgs
   - GET /segments
   - GET /stats
+  - POST /ingest-order
   types:
-  - CrosswalkEdge
-  - CrosswalkEdgeKey
-  - SegmentId
-  - SegmentStatus
-  - UnspscFamily
+  - ManualItemInput
+  - ManualOrderInput
   api_modules:
-  - placer.api.debug
   - placer.db
-  - placer.identity.store
+  - placer.events
+  - placer.identity
   files:
-  - frontend/src/api.ts
-  - frontend/src/views/Beliefs.tsx
-  - frontend/src/views/Overview.tsx
-  - placer/db.py
-  - placer/identity/store.py
-  - placer/identity/types.py
   - placer/api/debug.py::list_crosswalk_edges
 writes:
-- crosswalk_edges
-- orgs
-- segments
+- orders
 reads:
 - belief_checkpoints
 - candidates
-- crosswalk_edges
 - events
-- orders
-- orgs
-- quantity_registry
+- frontend/src/api.ts
+- placer/api/debug.py
 - segments
 ---
 ## Capability — what it can do

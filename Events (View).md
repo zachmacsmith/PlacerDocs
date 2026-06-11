@@ -2,30 +2,19 @@
 feature: Events (View)
 group: New
 last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
-  tables:
-  - events
-  endpoints:
-  - GET /debug/events
-  - GET /debug/events/kinds
-  types:
-  - EventKindCount
-  - EventRecord
-  api_modules:
-  - api.eventKinds
-  - api.events
+  tables: []
+  endpoints: []
+  types: []
+  api_modules: []
   files:
-  - frontend/src/api.ts
-  - frontend/src/components/Card.tsx
-  - frontend/src/components/Table.tsx
   - frontend/src/views/**
-  - frontend/src/views/Events.tsx
-  - placer/api/debug.py::list_events
-  - placer/api/debug.py::list_event_kinds
 writes: []
 reads:
-- events
+- frontend/src/api.ts
+- frontend/src/views/Events.tsx
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 

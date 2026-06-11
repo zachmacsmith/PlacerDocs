@@ -448,6 +448,34 @@
       "feature_name": "Overview",
       "group": "New",
       "page_file": "Overview.md"
+    },
+    {
+      "route": "POST /ingest-order",
+      "nav_title": "Ingest Order Manual",
+      "component": "ingest_order_manual",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Ingest Order Manual",
+      "group": "New",
+      "page_file": "Ingest Order Manual.md"
+    },
+    {
+      "route": "/view/ingest",
+      "nav_title": "Ingest",
+      "component": "Ingest",
+      "component_file": "frontend/src/views/Ingest.tsx",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Ingest",
+      "group": "New",
+      "page_file": "Ingest.md"
     }
   ],
   "generated_at": "2026-06-11T15:36:24Z"

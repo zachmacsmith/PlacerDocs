@@ -2,31 +2,18 @@
 feature: List Events
 group: Events
 last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
   - belief_checkpoints
   - candidates
-  - crosswalk_edges
   - events
   - orders
-  - orgs
-  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
   - GET /beliefs/quantities
   - GET /crosswalk
-  - GET /debug/beliefs/checkpoints
-  - GET /debug/beliefs/quantities
-  - GET /debug/crosswalk
-  - GET /debug/events
-  - GET /debug/events/kinds
-  - GET /debug/orders
-  - GET /debug/orders/{order_id}
-  - GET /debug/orgs
-  - GET /debug/segments
-  - GET /debug/stats
   - GET /events
   - GET /events/kinds
   - GET /orders
@@ -34,37 +21,25 @@ anchors:
   - GET /orgs
   - GET /segments
   - GET /stats
+  - POST /ingest-order
   types:
-  - EVENT_PAYLOAD_MODELS
-  - EntityRefs
-  - Event
-  - EventKind
-  - EventKindCount
-  - EventRecord
-  - Provenance
+  - ManualItemInput
+  - ManualOrderInput
   api_modules:
-  - placer.api.debug
-  - placer.api.server
   - placer.db
-  - placer.events.store
-  - placer.events.types
+  - placer.events
+  - placer.identity
   files:
-  - frontend/src/api.ts
-  - frontend/src/components/Layout.tsx
-  - frontend/src/views/Events.tsx
-  - placer/db.py
-  - placer/events/store.py
-  - placer/events/types.py
   - placer/api/debug.py::list_events
-writes: []
+writes:
+- orders
 reads:
 - belief_checkpoints
 - candidates
-- crosswalk_edges
 - events
-- orders
-- orgs
-- quantity_registry
+- frontend/src/api.ts
+- frontend/src/components/Layout.tsx
+- placer/api/debug.py
 - segments
 ---
 ## Capability — what it can do

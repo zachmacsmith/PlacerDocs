@@ -2,7 +2,7 @@
 feature: List Orgs
 group: Organizations
 last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
   - belief_checkpoints
@@ -24,9 +24,12 @@ anchors:
   - GET /orgs
   - GET /segments
   - GET /stats
+  - POST /ingest-order
   types:
   - Ein
   - EventSeq
+  - ManualItemInput
+  - ManualOrderInput
   - OrgId
   - OrgMemberships
   - OrgRecord
@@ -38,28 +41,24 @@ anchors:
   api_modules:
   - frontend/src/api.ts
   - placer.db
+  - placer.events
+  - placer.identity
   - placer/api/debug.py
   files:
   - frontend/src/api.ts
   - frontend/src/views/Candidates.tsx
+  - placer/api/debug.py::list_orgs
   - placer/db.py
   - placer/identity/store.py
   - placer/identity/types.py
-  - placer/api/debug.py::list_orgs
-writes: []
+writes:
+- orders
 reads:
 - belief_checkpoints
 - candidates
-- crosswalk_edges
 - events
 - frontend/src/api.ts
-- frontend/src/views/Candidates.tsx
-- orders
-- orgs
 - placer/api/debug.py
-- placer/db.py
-- placer/identity/store.py
-- placer/identity/types.py
 - segments
 ---
 ## Capability — what it can do

@@ -2,7 +2,7 @@
 feature: Overview
 group: New
 last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
   - belief_checkpoints
@@ -33,8 +33,9 @@ anchors:
   - placer/api/server.py::health
 writes: []
 reads:
-- GET /debug/stats
-- GET /health
+- frontend/src/api.ts
+- frontend/src/views/Ingest.tsx
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 

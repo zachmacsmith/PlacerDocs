@@ -2,31 +2,18 @@
 feature: Candidates (View)
 group: New
 last_synced: '2026-06-11'
-last_commit: ba02630c316c435e071a627f433a21d08f9987e7
+last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables: []
-  endpoints:
-  - GET /debug/orders
-  - GET /debug/orders/{order_id}
-  - GET /debug/orgs
-  types:
-  - CandidateRecord
-  - OrderDetail
-  - OrderSummary
-  - OrgRecord
-  api_modules:
-  - api
+  endpoints: []
+  types: []
+  api_modules: []
   files:
-  - frontend/src/api.ts
-  - frontend/src/components/Card.tsx
-  - frontend/src/components/Table.tsx
   - frontend/src/views/**
-  - frontend/src/views/Candidates.tsx
 writes: []
 reads:
-- GET /debug/orders
-- GET /debug/orders/{order_id}
-- GET /debug/orgs
+- frontend/src/api.ts
+- frontend/src/views/Candidates.tsx
 ---
 ## Capability — what it can do
 
