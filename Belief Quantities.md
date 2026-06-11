@@ -2,7 +2,7 @@
 feature: Belief Quantities
 group: Beliefs
 last_synced: '2026-06-11'
-last_commit: ba02630c316c435e071a627f433a21d08f9987e7
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
@@ -103,11 +103,13 @@ The `LEFT JOIN` means quantities with no checkpoints yet are still included, wit
 
 ## Availability — is it usable right now
 
-The route `GET /debug/beliefs/quantities` is **present and active** in the current codebase. The handler `list_quantities` exists in `placer/api/debug.py` and the router is unconditionally mounted in `placer/api/server.py` with no feature flag or guard.
+The route `GET /debug/beliefs/quantities` is **present and active** in the current codebase. The handler `list_quantities` exists in `placer/api/debug.py` and the `debug_router` is unconditionally mounted in `placer/api/server.py` via `app.include_router(debug_router)` — no feature flag, guard, or conditional import is present.
 
 **Runtime prerequisites for meaningful results:**
-- `DATABASE_URL` environment variable must be set; if absent, `placer/db.py` raises `RuntimeError` before any query is executed.
-- The `quantity_registry` and `belief_checkpoints` tables must exist in the database. No migration helper is visible in the examined source; their presence depends on schema provisioning outside this codebase.
-- The endpoint will return `{ "quantities": [] }` (an empty list) if the `quantity_registry` table is empty, which is the state of a freshly seeded environment before any belief-system quantities have been registered.
+- `DATABASE_URL` environment variable must be set; if absent, `placer/db.py` raises `RuntimeError("DATABASE_URL not set")` before any query is executed. The pool is initialised lazily on the first `get_conn()` call (pool min_size=2, max_size=10).
+- The `quantity_registry` and `belief_checkpoints` tables must exist in the database. No migration helper is visible in the examined source files; their presence depends on schema provisioning outside this codebase.
+- The endpoint returns `{ "quantities": [] }` if `quantity_registry` is empty — the expected state of a freshly provisioned environment before any belief quantities have been registered.
 
-**No changelog entries** are available to indicate planned changes or deprecation. The endpoint carries no API-key requirement, so there is no credential barrier to access; it should not be exposed on a public network interface without an external authentication layer.
+**No authentication barrier.** The debug router applies no `X-API-Key` check (unlike the `/recommendations` and `/context-analysis` routes on the main app). The endpoint must not be exposed on a public network interface without an external authentication or network layer.
+
+**No changelog entries** are available to indicate planned changes or deprecation. All code paths confirmed above match the current source exactly.

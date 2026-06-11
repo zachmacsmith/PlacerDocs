@@ -2,7 +2,7 @@
 feature: Crosswalk Edges
 group: Segments
 last_synced: '2026-06-11'
-last_commit: ba02630c316c435e071a627f433a21d08f9987e7
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
@@ -45,6 +45,8 @@ anchors:
   - placer/identity/types.py
 writes:
 - crosswalk_edges
+- orgs
+- segments
 reads:
 - belief_checkpoints
 - candidates
@@ -90,16 +92,16 @@ The join enriches each raw edge with its segment's `definition_text` and `status
 
 **Read path within the belief system** (`placer/identity/store.py` → `get_crosswalk_edges_for_family`): The belief subsystem queries edges by family only (no join to `segments`), returning `(SegmentId, quantity_refs)` tuples. This is the hot path used during placement scoring; the debug endpoint is a separate, richer read intended for inspection only.
 
-**Frontend** (`frontend/src/views/Beliefs.tsx`): The `Beliefs` view contains a "Crosswalk" sub-tab that calls `api.crosswalk()` (`frontend/src/api.ts`) and renders a table of edges with columns for family, segment ID, definition, a colour-coded status badge (`green` for `active`, `yellow` for `merged`), and quantity refs JSON. The sub-tab is lazy-loaded: the API call fires only when the "Crosswalk" tab is selected, triggered by a `useEffect` dependency on `subTab`. The `CrosswalkEdge` TypeScript interface in `frontend/src/api.ts` mirrors the API response shape exactly. The `api.crosswalk()` call accepts an optional `{ family }` filter parameter, forwarded as a query string.
+**Frontend** (`frontend/src/views/Beliefs.tsx`): The `Beliefs` view contains a "Crosswalk" sub-tab that calls `api.crosswalk()` (`frontend/src/api.ts`) and renders a table of edges with columns for family, segment ID, definition, a colour-coded status badge (`green` for `active`, `yellow` for `merged`), and quantity refs JSON. The sub-tab is lazy-loaded: the API call fires only when the "Crosswalk" tab is selected, triggered by a `useEffect` dependency on `subTab`. The `CrosswalkEdge` TypeScript interface in `frontend/src/api.ts` mirrors the API response shape exactly. The `api.crosswalk()` call accepts an optional `{ family?: string }` params object, which is forwarded as a `family` query-string parameter. When `quantity_refs` is empty the cell renders `—` rather than `{}`.
 
-## Availability — is it usable right now
+## Availability — current code state
 
-**`GET /debug/crosswalk`** is confirmed present in `placer/api/debug.py`, registered on the `APIRouter` with prefix `/debug`, and listed in the feature table with component `list_crosswalk_edges` and no guards. The endpoint requires no authentication or API key and is reachable by any client that can reach the server.
+**Backend:** The `GET /crosswalk` route is present and fully implemented in `placer/api/debug.py` (`list_crosswalk_edges`). It depends on the `crosswalk_edges` and `segments` tables being present in Postgres and the `DATABASE_URL` environment variable being set. No authentication guards are registered on the route. The connection pool is initialised lazily on first use via `init_pool()` in `placer/db.py`.
 
-**Runtime prerequisite:** The handler calls `get_conn()` (`placer/db.py`), which initialises an `AsyncConnectionPool` on first use. If `DATABASE_URL` is not set in the environment, `get_conn()` raises a `RuntimeError` before any query is executed, making the endpoint non-functional regardless of server availability.
+**Write path:** `upsert_crosswalk_edge` and `get_crosswalk_edges_for_family` are both present in `placer/identity/store.py`. The upsert uses `ON CONFLICT (family, segment_id)`, so a unique constraint on that composite key must exist in the schema for writes to succeed without error.
 
-**Query behaviour:** The inner join to `segments` means the endpoint returns only edges whose `segment_id` has a corresponding row in the `segments` table. Orphaned crosswalk edges (referencing a non-existent segment) are silently excluded from results.
+**Stats endpoint:** `GET /stats` iterates a hardcoded list of tables that includes `crosswalk_edges`, confirmed in `placer/api/debug.py` (`system_stats`). The count feeds the `Overview` dashboard `StatCard` labelled "Crosswalk Edges", confirmed in `frontend/src/views/Overview.tsx`.
 
-**Frontend surface:** The "Crosswalk" sub-tab in `frontend/src/views/Beliefs.tsx` is confirmed present and wired to `api.crosswalk()`. It renders lazily on tab selection. The `Overview` stat card "Crosswalk Edges" is confirmed in `frontend/src/views/Overview.tsx`, sourced from `GET /debug/stats`.
+**Frontend:** The "Crosswalk" sub-tab is present in `frontend/src/views/Beliefs.tsx` and the `CrosswalkEdge` TypeScript interface is defined in `frontend/src/api.ts`. The `api.crosswalk()` function supports an optional `family` filter parameter. There is no `limit` parameter exposed in the TypeScript client — only the server-side default of 200 applies from the frontend.
 
-**No changelog entries are configured.** All availability assertions are derived solely from the current source code. There are no known discrepancies between claimed and implemented behaviour.
+**No changelog entries** were found; there are no pending or in-flight changes to assess against the code state.

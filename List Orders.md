@@ -2,13 +2,16 @@
 feature: List Orders
 group: Orders
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
   - orders
+  - orgs
+  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
@@ -34,7 +37,8 @@ reads:
 - belief_checkpoints
 - candidates
 - events
-- orders
+- placer/api/debug.py
+- placer/db.py
 - segments
 ---
 ## Capability — what it can do
@@ -54,7 +58,7 @@ The `limit` query parameter (1–200, default 50) controls how many orders are r
 
 The handler `list_orders` lives in `placer/api/debug.py` and is registered on a FastAPI `APIRouter` with the prefix `/debug` and tag `debug`. The effective mounted path exposed to clients is `GET /debug/orders`.
 
-**Database access** is performed through `placer.db.get_conn`, an async context manager that lazily initialises a `psycopg_pool.AsyncConnectionPool` (min 2, max 10 connections) backed by the `DATABASE_URL` environment variable. The pool is module-level and shared across all requests.
+**Database access** is performed through `placer.db.get_conn`, an async context manager that lazily initialises a `psycopg_pool.AsyncConnectionPool` (min 2, max 10 connections) backed by the `DATABASE_URL` environment variable via `placer.db.init_pool`. The pool is module-level and shared across all requests; `placer.db.close_pool` tears it down on shutdown.
 
 **Query** — a single SQL statement performs a `LEFT JOIN` between `orders` and `candidates` on `order_id`, groups by `orders.order_id`, and uses two `FILTER (WHERE ...)` clauses on `COUNT` to compute `contacted_count` and `resolved_count` in one round-trip. Row columns are addressed positionally (`r[0]`–`r[10]`) and mapped to a plain `dict` before returning.
 
@@ -64,12 +68,13 @@ The handler `list_orders` lives in `placer/api/debug.py` and is registered on a 
 
 ## Availability — is it usable right now
 
-The handler is **present in source** (`placer/api/debug.py`, `list_orders` function) and the route is registered on the `/debug` router. Assuming the router is mounted into the main FastAPI application and the `DATABASE_URL` environment variable is set and reachable, the endpoint is operational.
+The handler `list_orders` is **present in source** (`placer/api/debug.py`) and registered on the `/debug` router at `GET /debug/orders`. The feature table confirms `GET /orders` maps to this component with no guards. Assuming the router is mounted into the main FastAPI application and runtime preconditions are met, the endpoint is operational.
 
 **Preconditions for a successful response:**
-- `DATABASE_URL` must be configured; its absence raises `RuntimeError` at connection time.
+- `DATABASE_URL` must be set in the environment; its absence causes `placer.db.get_database_url` to raise `RuntimeError` at connection time.
 - The `orders` and `candidates` tables must exist in the target database.
+- The async connection pool must have been opened (via `placer.db.init_pool`); `get_conn` calls this lazily on first use.
 
-**Access control:** No guards are applied. The endpoint is unauthenticated by design, consistent with its placement in the `debug` tag. It should be treated as an internal/operator-facing surface and not exposed publicly without additional network-layer protection.
+**Access control:** No guards are applied (confirmed in both the feature table and router registration). The endpoint is unauthenticated by design, consistent with its `debug` tag. It should be treated as an internal/operator-facing surface and not exposed publicly without additional network-layer protection.
 
-No changelog entries exist, so there are no declared in-progress or removed behaviours to flag.
+**Changelog:** No changelog is configured; there are no declared in-progress, unreleased, or removed behaviours to flag.

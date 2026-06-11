@@ -2,12 +2,15 @@
 feature: Belief Checkpoints
 group: Beliefs
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
+  - orders
+  - orgs
   - quantity_registry
   - segments
   endpoints:
@@ -33,7 +36,10 @@ writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
+- orders
+- orgs
 - quantity_registry
 - segments
 ---
@@ -57,7 +63,7 @@ The handler `list_checkpoints` is defined in `placer/api/debug.py` and registere
 
 On each request the handler:
 
-1. Opens a pooled async Postgres connection via `placer.db.get_conn`, which draws from a `psycopg_pool.AsyncConnectionPool` initialised from the `DATABASE_URL` environment variable.
+1. Opens a pooled async Postgres connection via `placer.db.get_conn`, which draws from a `psycopg_pool.AsyncConnectionPool` initialised from the `DATABASE_URL` environment variable. The pool is configured with `min_size=2` and `max_size=10` and is lazily opened on first use by `init_pool`.
 2. Builds a dynamic `WHERE` clause: if `quantity_id` is supplied it appends `quantity_id = %s`; otherwise the clause degenerates to `TRUE`.
 3. Executes a single parameterised `SELECT` against `belief_checkpoints`, ordering by `computed_at DESC` and applying the `LIMIT` bound.
 4. Serialises each row into a plain dict, converting the `computed_at` timestamp to ISO-8601 if present, and returns a top-level `{ "checkpoints": [...] }` JSON envelope.
@@ -71,8 +77,9 @@ The endpoint carries no authentication guard (confirmed: guards `[]` in the feat
 The handler `list_checkpoints` is present and complete in `placer/api/debug.py`. The route is registered with no authentication guard, so any caller with network access to the API process can invoke it.
 
 **Runtime prerequisites:**
-- The `DATABASE_URL` environment variable must be set and reachable; absence raises a `RuntimeError` at pool-initialisation time.
-- The `belief_checkpoints` and `quantity_registry` tables must exist in the target Postgres database. The endpoint will fail with a database error if the schema has not been migrated.
+- The `DATABASE_URL` environment variable must be set and reachable; its absence causes `placer.db.get_database_url` to raise a `RuntimeError` before any connection is attempted.
+- The connection pool (`psycopg_pool.AsyncConnectionPool`, min 2 / max 10) is initialised lazily on the first request; a misconfigured or unreachable database will surface as a pool-open error at that point.
+- The `belief_checkpoints` and `quantity_registry` tables must exist in the target Postgres schema. The endpoint will fail with a database error if migrations have not been applied.
 
 **Data availability:** The endpoint returns an empty `checkpoints` list if no belief checkpoints have been computed yet — the Bayesian learning pipeline must have run at least one update cycle for meaningful data to appear.
 

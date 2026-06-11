@@ -2,7 +2,7 @@
 feature: Recommendations
 group: Matching
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
@@ -61,8 +61,13 @@ The server is CORS-enabled for `localhost:5173`, `localhost:5174`, `app.simpli.s
 
 ## Availability — is it usable right now
 
-The route `POST /recommendations` is **present in code and reachable** once the server is running with a valid `DATABASE_URL` and at least one entry in `API_KEYS`. The endpoint will accept well-formed requests and return a structurally valid `RecommendationResponse`.
+The route `POST /recommendations` is **present in code and reachable** once the server is running with a valid `DATABASE_URL` and at least one entry in the `API_KEYS` environment variable. The endpoint accepts well-formed requests and returns a structurally valid `RecommendationResponse`.
 
-However, **it always returns an empty recommendations list** at this stage (M0 stub). No charity candidates are surfaced, ranked, or scored. The response is structurally correct per the Simpli §2.1 contract but carries zero actionable data. Callers that rely on non-empty recommendations must wait for the ingest → generate → resolve → value → rank pipeline stages to be integrated into this handler.
+However, **it unconditionally returns an empty recommendations list** — confirmed directly in `placer/api/server.py` at the M0 stub comment. No charity candidates are surfaced, ranked, or scored regardless of the `order_id` supplied. The response satisfies the Simpli §2.1 wire contract but carries zero actionable data.
 
-No changelog entries exist to indicate a target date or completion status for those pipeline stages. The discrepancy between the full `CharityRecommendation` schema (which implies rich scoring output) and the current stub behaviour should be treated as a known limitation until further notice.
+**Runtime prerequisites that must all be satisfied before the server starts:**
+- `DATABASE_URL` must be set and point to a reachable Postgres instance (enforced in `placer/db.py` at pool open time).
+- `API_KEYS` must contain at least one non-empty value; an absent or empty variable causes every request to fail with HTTP 401.
+
+**Known limitations:**
+- No changelog entries exist to indicate a target date or completion status for the pipeline stages. The full `CharityRecommendation` schema implies rich per-signal scoring, but the discrepancy between that schema and the current stub output is a confirmed, in-code limitation until the ingest → generate → resolve → value → rank stages are wired in.

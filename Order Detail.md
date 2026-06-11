@@ -2,19 +2,31 @@
 feature: Order Detail
 group: Orders
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
   - orders
+  - orgs
+  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
   - GET /beliefs/quantities
   - GET /crosswalk
+  - GET /debug/beliefs/checkpoints
+  - GET /debug/beliefs/quantities
+  - GET /debug/crosswalk
+  - GET /debug/events
+  - GET /debug/events/kinds
+  - GET /debug/orders
   - GET /debug/orders/{order_id}
+  - GET /debug/orgs
+  - GET /debug/segments
+  - GET /debug/stats
   - GET /events
   - GET /events/kinds
   - GET /orders
@@ -34,8 +46,11 @@ writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
 - orders
+- orgs
+- quantity_registry
 - segments
 ---
 ## Capability — what it can do
@@ -52,7 +67,7 @@ If the requested `order_id` does not exist in the `orders` table the endpoint re
 
 The handler `get_order` lives in `placer/api/debug.py` and is registered on the `APIRouter` with prefix `/debug` and tag `debug`. The full resolved path is therefore `GET /debug/orders/{order_id}`.
 
-**Database access** is handled through `placer/db.get_conn()`, an async context manager that vends a connection from a `psycopg_pool.AsyncConnectionPool` (min 2, max 10 connections) initialised from the `DATABASE_URL` environment variable. All queries are raw parameterised SQL; there is no ORM layer.
+**Database access** is handled through `placer/db.get_conn()`, an async context manager that vends a connection from a `psycopg_pool.AsyncConnectionPool` (min 2, max 10 connections) initialised from the `DATABASE_URL` environment variable. The pool is created lazily on the first call to `init_pool()` with `open=False` then immediately awaited open; subsequent calls reuse the same global instance. All queries are raw parameterised SQL; there is no ORM layer.
 
 **Query plan** (two sequential round-trips per request):
 1. A point-lookup on `orders` by primary key returns the single order row.
@@ -66,10 +81,11 @@ The endpoint carries no authentication guards; it is part of the read-only debug
 
 ## Availability — is it usable right now
 
-The handler `get_order` is confirmed present in `placer/api/debug.py` and is wired to `GET /debug/orders/{order_id}` via the `APIRouter`. No authentication guards are declared on this route.
+The handler `get_order` is confirmed present in `placer/api/debug.py` and is wired to `GET /debug/orders/{order_id}` via the `APIRouter` (prefix `/debug`, tag `debug`). No authentication guards or feature flags are declared on this route or anywhere in the file.
 
-**Runtime prerequisites that must be satisfied for the endpoint to respond successfully:**
-- The `DATABASE_URL` environment variable must be set and point to a reachable Postgres instance; if absent, `get_conn()` raises `RuntimeError("DATABASE_URL not set")` on the first request.
-- The `orders` and `candidates` tables must exist in the target database; missing tables will produce a database-level error rather than a handled response.
+**Runtime prerequisites** that must be satisfied for the endpoint to respond successfully:
+- `DATABASE_URL` must be set in the environment and point to a reachable Postgres instance. If absent, `get_database_url()` in `placer/db.py` raises `RuntimeError("DATABASE_URL not set")` on the first request; this is unhandled and will produce a 500-class response.
+- The pool is opened lazily on the first call to `init_pool()`; there is no application-startup health check visible in this file, so a misconfigured `DATABASE_URL` will not surface until the first request arrives.
+- The `orders` and `candidates` tables must exist in the target database. A missing table will produce a database-level error rather than a handled application response.
 
-No feature flags, staged rollouts, or guards were found in the source. There is no changelog configured, so no in-flight intent context is available. The endpoint should be reachable in any environment where the application is deployed and the database is accessible.
+No changelog is configured, so no in-flight intent context is available. No staged rollout, guard, or flag was found in the source. The endpoint is reachable in any environment where the application is deployed and the above prerequisites are met.

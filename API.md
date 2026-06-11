@@ -2,7 +2,7 @@
 feature: API
 group: Placer
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
@@ -88,7 +88,7 @@ All endpoints are unauthenticated read-only views over the core database tables,
 |---|---|
 | `POST /recommendations` | Returns a ranked list of charity `CharityRecommendation` objects for a given `order_id` |
 | `POST /context-analysis` | Returns a `ContextAnalysisResponse` for a given EIN |
-| `GET /health` | Liveness probe returning `{"status": "ok"}` |
+| `GET /health` | Liveness probe returning `{"status": "ok", "service": "placer"}` |
 
 The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.simpli.supply`, and `app.simplisupply.com`, permitting `POST`, `OPTIONS`, and `GET` with `Content-Type` and `X-API-Key` headers.
 
@@ -96,7 +96,7 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 **Application bootstrap** (`placer/api/server.py`): A FastAPI app is instantiated with a `lifespan` context manager that calls `init_pool()` on startup and `close_pool()` on shutdown. The debug router is mounted via `app.include_router(debug_router)`, inheriting the `/debug` prefix declared inside the router itself.
 
-**Database connectivity** (`placer/db.py`): A module-level `psycopg_pool.AsyncConnectionPool` (min 2, max 10) is lazily initialised from the `DATABASE_URL` environment variable. The `get_conn()` async context manager acquires a connection from the pool for each request and yields a `psycopg.AsyncConnection[tuple]`; the pool commits and returns the connection on exit. All debug endpoints and adapter modules share this single pool.
+**Database connectivity** (`placer/db.py`): A module-level `psycopg_pool.AsyncConnectionPool` (min 2, max 10) is lazily initialised from the `DATABASE_URL` environment variable. `init_pool()` is idempotent — it returns the existing pool if already open. The `get_conn()` async context manager calls `init_pool()` on each invocation (no-op if already initialised), then acquires a connection via `pool.connection()` and yields a `psycopg.AsyncConnection[tuple]`; the pool returns the connection automatically on context exit. All debug endpoints share this single pool.
 
 **Debug endpoint pattern**: Every handler in `debug.py` opens a `get_conn()` context, issues one or two raw SQL queries against the named table(s), fetches all result rows as plain tuples, and serialises them into a dict. Datetime columns are converted with `.isoformat()` before inclusion. Pagination is enforced via FastAPI `Query` bounds on `limit`/`offset` parameters at the handler level; no ORM layer is involved.
 
@@ -104,14 +104,16 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 **Pydantic models**: `RecommendationRequest`, `RecommendationResponse`, `CharityRecommendation`, and `ContextAnalysisResponse` are declared in `server.py` and match Simpli's incumbent mission-match worker contract, with additive Placer-specific fields (`factor_breakdown`, `provenance_bridges`) that are contract-compatible.
 
-## Availability — is it available right now
+## Availability — is it usable right now
 
-**Debug endpoints** (`GET /debug/*`): All ten debug endpoints are fully implemented in `placer/api/debug.py` and mounted in `placer/api/server.py` with no guards. They are available to any client that can reach the server — no API key is required. They depend on a reachable PostgreSQL instance and a valid `DATABASE_URL` environment variable; they will error at connection time if these are absent.
+**Debug endpoints** (`GET /debug/*`): All ten debug endpoints are fully implemented in `placer/api/debug.py` and mounted in `placer/api/server.py` with no guards. They are available to any client that can reach the server — no API key is required. They depend on a reachable PostgreSQL instance and a valid `DATABASE_URL` environment variable; requests will fail at connection time if these are absent.
 
-**`GET /health`**: Implemented and unauthenticated; always returns `{"status": "ok"}` without a database call.
+**`GET /health`**: Implemented and unauthenticated; always returns `{"status": "ok", "service": "placer"}` without touching the database.
 
-**`POST /recommendations`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint is reachable but deliberately returns a stub empty recommendation list. The full ranking pipeline (noted in comments as `ingest → generate → resolve → value → rank`) is not yet wired in.
+**`POST /recommendations`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint is reachable but deliberately returns a stub empty recommendation list (`metadata.placer_version: "0.1.0-stub"`). The full ranking pipeline (noted in source comments as `ingest → generate → resolve → value → rank`) is not yet wired in.
 
-**`POST /context-analysis`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. Returns a static "not yet implemented" message. No analysis logic is connected.
+**`POST /context-analysis`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. Returns a static `"Context analysis not yet implemented in Placer."` message. No analysis logic is connected.
 
-No changelog is configured; there is no changelog-vs-code discrepancy to flag.
+**Anchor correction**: Previous anchor entries for unprefixed routes (`GET /events`, `GET /orders`, `GET /orgs`, etc.) have been removed — neither `debug.py` nor `server.py` defines routes at those paths. Only the `/debug/*` prefixed routes and the three worker-contract endpoints exist in current code.
+
+No changelog is configured; there are no changelog-vs-code discrepancies to flag beyond the above.

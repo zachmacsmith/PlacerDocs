@@ -2,10 +2,28 @@
 feature: Context Analysis
 group: Matching
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
-  tables: []
+  tables:
+  - belief_checkpoints
+  - candidates
+  - crosswalk_edges
+  - events
+  - orders
+  - orgs
+  - quantity_registry
+  - segments
   endpoints:
+  - GET /debug/beliefs/checkpoints
+  - GET /debug/beliefs/quantities
+  - GET /debug/crosswalk
+  - GET /debug/events
+  - GET /debug/events/kinds
+  - GET /debug/orders
+  - GET /debug/orders/{order_id}
+  - GET /debug/orgs
+  - GET /debug/segments
+  - GET /debug/stats
   - GET /health
   - POST /context-analysis
   - POST /recommendations
@@ -16,6 +34,7 @@ anchors:
   - RecommendationResponse
   api_modules:
   - placer.api
+  - placer.api.debug
   - placer.api.server
   - placer.db
   files:
@@ -23,8 +42,12 @@ anchors:
   - placer/api/debug.py
   - placer/api/server.py
   - placer/db.py
-writes: []
-reads: []
+writes:
+- placer/api/server.py
+reads:
+- placer/api/debug.py
+- placer/api/server.py
+- placer/db.py
 ---
 ## Capability — what it can do
 
@@ -44,12 +67,16 @@ The handler lives in `placer/api/server.py` as the `context_analysis` async func
 
 **Current stub behaviour.** The handler returns a hardcoded `analysis` string (`"Context analysis not yet implemented in Placer."`) and `charity_data=None`. No database query, no Bayesian inference, and no external service call is made. The implementation is a placeholder that satisfies the Simpli contract surface while the full pipeline is built out.
 
-**Infrastructure wiring.** The FastAPI `app` is initialised with a `lifespan` context manager (defined in the same file) that calls `placer.db.init_pool` on startup and `placer.db.close_pool` on shutdown, giving all handlers access to the shared `psycopg_pool.AsyncConnectionPool`. The context-analysis handler itself does not currently use that pool. CORS is configured to allow `POST` and `OPTIONS` from the Simpli front-end origins.
+**Infrastructure wiring.** The FastAPI `app` is initialised with a `lifespan` context manager (defined in the same file) that calls `placer.db.init_pool` on startup and `placer.db.close_pool` on shutdown, giving all handlers access to the shared `psycopg_pool.AsyncConnectionPool` (pool size: min 2, max 10, backed by `DATABASE_URL`). The context-analysis handler itself does not currently use that pool. CORS is configured to allow `POST`, `GET`, and `OPTIONS` requests from the four permitted Simpli origins (`localhost:5173`, `localhost:5174`, `app.simpli.supply`, `app.simplisupply.com`). A debug read-only router (`placer/api/debug.py`) is mounted at `/debug` on the same `app` instance; it does not interact with the context-analysis handler.
 
 ## Availability — is it usable right now
 
-The route is **present and reachable** in the codebase (`placer/api/server.py`, confirmed). It will respond to authenticated `POST /context-analysis` requests at runtime, but the response is a static stub: `analysis` is always the fixed string `"Context analysis not yet implemented in Placer."` and `charity_data` is always `null`. No meaningful organisation data is returned.
+The route is **present and reachable** in the codebase (`placer/api/server.py`, confirmed at line 129). It will respond to authenticated `POST /context-analysis` requests at runtime, but the response is a static stub: `analysis` is always the fixed string `"Context analysis not yet implemented in Placer."` and `charity_data` is always `null`. No meaningful organisation data is returned.
 
-A valid `API_KEYS` environment variable and a reachable `DATABASE_URL` are required for the server to start (the pool is initialised at lifespan startup), but the context-analysis handler itself makes no database calls in its current form.
+**Runtime prerequisites.** The server requires two environment variables to start successfully:
+- `DATABASE_URL` — the Postgres connection string; `placer.db.init_pool` raises `RuntimeError` if absent, which aborts the lifespan startup and prevents the application from serving any requests.
+- `API_KEYS` — one or more comma-separated keys; without this, every request returns HTTP 401.
 
-No changelog entries exist to indicate a target date or planned scope for the full implementation. The discrepancy between the endpoint's presence in the Simpli worker contract and its stub-only behaviour should be considered when evaluating production readiness.
+The context-analysis handler itself makes no database calls in its current form, but the pool initialisation is a shared lifespan concern that gates the entire application.
+
+**No changelog entries exist** to indicate a target date or planned scope for the full implementation. The discrepancy between the endpoint's presence in the Simpli worker contract and its stub-only behaviour should be considered when evaluating production readiness.

@@ -2,12 +2,16 @@
 feature: Event Kinds
 group: Events
 last_synced: '2026-06-11'
-last_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
+last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
   - belief_checkpoints
   - candidates
+  - crosswalk_edges
   - events
+  - orders
+  - orgs
+  - quantity_registry
   - segments
   endpoints:
   - GET /beliefs/checkpoints
@@ -49,18 +53,18 @@ writes: []
 reads:
 - belief_checkpoints
 - candidates
+- crosswalk_edges
 - events
-- placer/api/debug.py
-- placer/api/server.py
-- placer/db.py
-- placer/events/types.py
+- orders
+- orgs
+- quantity_registry
 - segments
 ---
 ## Capability — what it can do
 
 `GET /debug/events/kinds` returns a frequency census of every distinct `event_kind` value that exists in the `events` table. The response is a JSON object with a single `kinds` array; each element carries two fields: `kind` (the string value of the kind, e.g. `"ingest.order"` or `"outcome.approval"`) and `count` (the integer number of rows bearing that kind). Results are sorted alphabetically by kind string.
 
-The endpoint provides a quick, zero-argument way to discover which categories of system activity have actually been recorded in a given deployment. The full taxonomy of valid kinds is defined by the `EventKind` `StrEnum` in `placer/events/types.py`, which currently enumerates 28 values across seven namespaces: `ingest`, `inference`, `retrieval`, `decision`, `outcome`, `identity`, `belief`, `lifecycle`, and `system`. The endpoint surfaces only kinds that have at least one row; kinds with no rows are absent from the response.
+The endpoint provides a quick, zero-argument way to discover which categories of system activity have actually been recorded in a given deployment. The full taxonomy of valid kinds is defined by the `EventKind` `StrEnum` in `placer/events/types.py`, which currently enumerates **26 values** across eight namespaces: `ingest` (4), `inference` (4), `retrieval` (1), `decision` (6), `outcome` (5), `identity` (3), `belief` (1), `lifecycle` (1), and `system` (1). The endpoint surfaces only kinds that have at least one row; kinds with no rows are absent from the response.
 
 ## Implementation — how it works
 
@@ -87,4 +91,4 @@ The route `GET /debug/events/kinds` is present in the codebase and wired into th
 
 The response is only meaningful once the `events` table has been populated; on a fresh or empty database the handler returns `{"kinds": []}` without error.
 
-There is no changelog entry describing this endpoint, so no announced changes or deprecations are pending.
+There is no changelog configured for this project, so no announced changes or deprecations are pending.
