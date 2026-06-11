@@ -44,11 +44,9 @@ anchors:
   - placer.db
   - placer.events.types
   files:
-  - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/db.py
   - placer/events/types.py
+  - placer/api/debug.py::list_event_kinds
 writes: []
 reads:
 - belief_checkpoints

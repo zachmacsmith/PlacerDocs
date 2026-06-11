@@ -5,7 +5,6 @@ last_synced: '2026-06-11'
 last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
-  - SET
   - crosswalk_edges
   - orgs
   - segments
@@ -49,12 +48,13 @@ anchors:
   - placer.identity.store
   - placer.identity.types
   files:
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/contracts.py
   - placer/identity/**
   - placer/identity/store.py
   - placer/identity/types.py
+  - placer/api/debug.py::list_crosswalk_edges
+  - placer/api/debug.py::list_orgs
+  - placer/api/debug.py::list_segments
 writes:
 - SET
 - crosswalk_edges

@@ -5,7 +5,6 @@ last_synced: '2026-06-11'
 last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables:
-  - SET
   - belief_checkpoints
   - quantity_registry
   endpoints:
@@ -48,11 +47,12 @@ anchors:
   - placer.contracts
   - placer.identity
   files:
-  - placer/api/debug.py
   - placer/beliefs/**
   - placer/beliefs/store.py
   - placer/beliefs/types.py
   - placer/contracts.py
+  - placer/api/debug.py::list_checkpoints
+  - placer/api/debug.py::list_quantities
 writes:
 - SET
 - belief_checkpoints

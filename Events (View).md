@@ -21,7 +21,8 @@ anchors:
   - frontend/src/components/Table.tsx
   - frontend/src/views/**
   - frontend/src/views/Events.tsx
-  - placer/api/debug.py
+  - placer/api/debug.py::list_events
+  - placer/api/debug.py::list_event_kinds
 writes: []
 reads:
 - events

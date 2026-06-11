@@ -52,12 +52,10 @@ anchors:
   - frontend/src/api.ts
   - frontend/src/components/Layout.tsx
   - frontend/src/views/Events.tsx
-  - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/db.py
   - placer/events/store.py
   - placer/events/types.py
+  - placer/api/debug.py::list_events
 writes: []
 reads:
 - belief_checkpoints

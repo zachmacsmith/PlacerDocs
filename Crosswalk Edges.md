@@ -38,11 +38,10 @@ anchors:
   - frontend/src/api.ts
   - frontend/src/views/Beliefs.tsx
   - frontend/src/views/Overview.tsx
-  - placer/api/**
-  - placer/api/debug.py
   - placer/db.py
   - placer/identity/store.py
   - placer/identity/types.py
+  - placer/api/debug.py::list_crosswalk_edges
 writes:
 - crosswalk_edges
 - orgs

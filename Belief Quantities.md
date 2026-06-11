@@ -43,11 +43,9 @@ anchors:
   - placer.db
   files:
   - frontend/src/api.ts
-  - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/beliefs/store.py
   - placer/db.py
+  - placer/api/debug.py::list_quantities
 writes: []
 reads:
 - belief_checkpoints

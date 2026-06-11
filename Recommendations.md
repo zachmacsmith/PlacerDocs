@@ -28,10 +28,8 @@ anchors:
   - placer.api.server
   - placer.db
   files:
-  - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/db.py
+  - placer/api/server.py::recommendations
 writes:
 - placer/api/server.py
 reads:

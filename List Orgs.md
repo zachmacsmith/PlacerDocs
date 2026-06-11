@@ -42,11 +42,10 @@ anchors:
   files:
   - frontend/src/api.ts
   - frontend/src/views/Candidates.tsx
-  - placer/api/**
-  - placer/api/debug.py
   - placer/db.py
   - placer/identity/store.py
   - placer/identity/types.py
+  - placer/api/debug.py::list_orgs
 writes: []
 reads:
 - belief_checkpoints

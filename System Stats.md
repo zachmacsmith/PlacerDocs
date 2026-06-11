@@ -40,9 +40,8 @@ anchors:
   - placer.api.debug
   - placer.db
   files:
-  - placer/api/**
-  - placer/api/debug.py
   - placer/db.py
+  - placer/api/debug.py::system_stats
 writes: []
 reads:
 - belief_checkpoints

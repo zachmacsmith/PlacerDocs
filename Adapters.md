@@ -40,7 +40,9 @@ anchors:
   - placer/adapters/simpli_outcomes.py
   - placer/adapters/simpli_writeback.py
   - placer/adapters/types.py
-  - placer/api/server.py
+  - placer/api/server.py::health
+  - placer/api/server.py::context_analysis
+  - placer/api/server.py::recommendations
 writes:
 - placer/adapters/simpli_writeback.py
 reads:

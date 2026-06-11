@@ -56,13 +56,14 @@ anchors:
   - placer/adapters/simpli_orders.py
   - placer/adapters/simpli_outcomes.py
   - placer/adapters/simpli_writeback.py
-  - placer/api/debug.py
   - placer/contracts.py
   - placer/db.py
   - placer/events/**
   - placer/events/store.py
   - placer/events/types.py
   - placer/identity/types.py
+  - placer/api/debug.py::list_events
+  - placer/api/debug.py::list_event_kinds
 writes:
 - events
 - orders

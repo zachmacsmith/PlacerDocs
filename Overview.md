@@ -29,8 +29,8 @@ anchors:
   - frontend/src/components/Table.tsx
   - frontend/src/views/**
   - frontend/src/views/Overview.tsx
-  - placer/api/debug.py
-  - placer/api/server.py
+  - placer/api/debug.py::system_stats
+  - placer/api/server.py::health
 writes: []
 reads:
 - GET /debug/stats

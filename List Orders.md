@@ -29,9 +29,8 @@ anchors:
   api_modules:
   - placer.db
   files:
-  - placer/api/**
-  - placer/api/debug.py
   - placer/db.py
+  - placer/api/debug.py::list_orders
 writes: []
 reads:
 - belief_checkpoints

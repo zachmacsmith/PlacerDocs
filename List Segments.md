@@ -43,10 +43,8 @@ anchors:
   - placer.api.server
   - placer.db
   files:
-  - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
   - placer/db.py
+  - placer/api/debug.py::list_segments
 writes: []
 reads:
 - belief_checkpoints
