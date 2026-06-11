@@ -1,0 +1,384 @@
+{
+  "features": [
+    {
+      "route": "/placer/adapters",
+      "nav_title": "Adapters",
+      "component": "adapters",
+      "component_file": "placer/adapters/simpli_db.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Adapters",
+      "group": "Placer",
+      "page_file": "Adapters.md"
+    },
+    {
+      "route": "/placer/api",
+      "nav_title": "Api",
+      "component": "api",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "API",
+      "group": "Placer",
+      "page_file": "API.md"
+    },
+    {
+      "route": "/placer/beliefs",
+      "nav_title": "Beliefs",
+      "component": "beliefs",
+      "component_file": "placer/beliefs/store.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Beliefs",
+      "group": "Placer",
+      "page_file": "Beliefs.md"
+    },
+    {
+      "route": "/placer/candidates",
+      "nav_title": "Candidates",
+      "component": "candidates",
+      "component_file": "placer/candidates/store.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Candidates",
+      "group": "Placer",
+      "page_file": "Candidates.md"
+    },
+    {
+      "route": "/placer/control",
+      "nav_title": "Control",
+      "component": "control",
+      "component_file": "placer/control/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Control",
+      "group": "Placer",
+      "page_file": "Control.md"
+    },
+    {
+      "route": "/placer/events",
+      "nav_title": "Events",
+      "component": "events",
+      "component_file": "placer/events/store.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Events",
+      "group": "Placer",
+      "page_file": "Events.md"
+    },
+    {
+      "route": "/placer/generate",
+      "nav_title": "Generate",
+      "component": "generate",
+      "component_file": "placer/generate/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Generate",
+      "group": "Placer",
+      "page_file": "Generate.md"
+    },
+    {
+      "route": "/placer/identity",
+      "nav_title": "Identity",
+      "component": "identity",
+      "component_file": "placer/identity/store.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Identity",
+      "group": "Placer",
+      "page_file": "Identity.md"
+    },
+    {
+      "route": "/placer/learn",
+      "nav_title": "Learn",
+      "component": "learn",
+      "component_file": "placer/learn/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Learn",
+      "group": "Placer",
+      "page_file": "Learn.md"
+    },
+    {
+      "route": "/placer/projections",
+      "nav_title": "Projections",
+      "component": "projections",
+      "component_file": "placer/projections/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Projections",
+      "group": "Placer",
+      "page_file": "Projections.md"
+    },
+    {
+      "route": "/placer/resolve",
+      "nav_title": "Resolve",
+      "component": "resolve",
+      "component_file": "placer/resolve/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Resolve",
+      "group": "Placer",
+      "page_file": "Resolve.md"
+    },
+    {
+      "route": "/placer/value",
+      "nav_title": "Value",
+      "component": "value",
+      "component_file": "placer/value/types.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Value",
+      "group": "Placer",
+      "page_file": "Value.md"
+    },
+    {
+      "route": "GET /events",
+      "nav_title": "List Events",
+      "component": "list_events",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "List Events",
+      "group": "Events",
+      "page_file": "List Events.md"
+    },
+    {
+      "route": "GET /events/kinds",
+      "nav_title": "List Event Kinds",
+      "component": "list_event_kinds",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Event Kinds",
+      "group": "Events",
+      "page_file": "Event Kinds.md"
+    },
+    {
+      "route": "GET /orders",
+      "nav_title": "List Orders",
+      "component": "list_orders",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "List Orders",
+      "group": "Orders",
+      "page_file": "List Orders.md"
+    },
+    {
+      "route": "GET /orders/{order_id}",
+      "nav_title": "Get Order",
+      "component": "get_order",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Order Detail",
+      "group": "Orders",
+      "page_file": "Order Detail.md"
+    },
+    {
+      "route": "GET /beliefs/quantities",
+      "nav_title": "List Quantities",
+      "component": "list_quantities",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Belief Quantities",
+      "group": "Beliefs",
+      "page_file": "Belief Quantities.md"
+    },
+    {
+      "route": "GET /beliefs/checkpoints",
+      "nav_title": "List Checkpoints",
+      "component": "list_checkpoints",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Belief Checkpoints",
+      "group": "Beliefs",
+      "page_file": "Belief Checkpoints.md"
+    },
+    {
+      "route": "GET /crosswalk",
+      "nav_title": "List Crosswalk Edges",
+      "component": "list_crosswalk_edges",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Crosswalk Edges",
+      "group": "Segments",
+      "page_file": "Crosswalk Edges.md"
+    },
+    {
+      "route": "GET /segments",
+      "nav_title": "List Segments",
+      "component": "list_segments",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "List Segments",
+      "group": "Segments",
+      "page_file": "List Segments.md"
+    },
+    {
+      "route": "GET /orgs",
+      "nav_title": "List Orgs",
+      "component": "list_orgs",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "List Orgs",
+      "group": "Organizations",
+      "page_file": "List Orgs.md"
+    },
+    {
+      "route": "GET /stats",
+      "nav_title": "System Stats",
+      "component": "system_stats",
+      "component_file": "placer/api/debug.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "System Stats",
+      "group": "System",
+      "page_file": "System Stats.md"
+    },
+    {
+      "route": "POST /recommendations",
+      "nav_title": "Recommendations",
+      "component": "recommendations",
+      "component_file": "placer/api/server.py",
+      "guards": [
+        "api_key"
+      ],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Recommendations",
+      "group": "Matching",
+      "page_file": "Recommendations.md"
+    },
+    {
+      "route": "POST /context-analysis",
+      "nav_title": "Context Analysis",
+      "component": "context_analysis",
+      "component_file": "placer/api/server.py",
+      "guards": [
+        "api_key"
+      ],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Context Analysis",
+      "group": "Matching",
+      "page_file": "Context Analysis.md"
+    },
+    {
+      "route": "GET /health",
+      "nav_title": "Health",
+      "component": "health",
+      "component_file": "placer/api/server.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "api_calls": [],
+      "feature_name": "Health Check",
+      "group": "System",
+      "page_file": "Health Check.md"
+    }
+  ],
+  "generated_at": "2026-06-11T15:36:24Z"
+}
