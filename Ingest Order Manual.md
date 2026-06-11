@@ -5,57 +5,23 @@ last_synced: '2026-06-11'
 last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
-  - belief_checkpoints
-  - candidates
-  - events
   - orders
-  - segments
   endpoints:
-  - GET /beliefs/checkpoints
-  - GET /beliefs/quantities
-  - GET /crosswalk
-  - GET /events
-  - GET /events/kinds
-  - GET /orders
-  - GET /orders/{order_id}
-  - GET /orgs
-  - GET /segments
-  - GET /stats
   - POST /debug/ingest-order
   - POST /ingest-order
   types:
-  - EntityRefs
-  - EventKind
-  - IngestOrderPayload
-  - ManualItemInput
   - ManualOrderInput
-  - OrderConstraints
-  - OrderId
-  - Provenance
-  - RawItem
-  - TrustTier
   api_modules:
   - placer.db
   - placer.events
   - placer.identity
-  - placer/api/debug.py
-  - placer/events/store.py
-  - placer/events/types.py
-  - placer/identity/types.py
   files:
   - placer/api/debug.py::ingest_order_manual
   - placer/api/server.py
   - placer/events/store.py::append
 writes:
 - orders
-- placer/api/debug.py::ingest_order_manual
-- placer/api/server.py
-- placer/events/store.py::append
-reads:
-- belief_checkpoints
-- candidates
-- events
-- segments
+reads: []
 ---
 ## Capability — what it can do
 

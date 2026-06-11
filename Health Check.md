@@ -6,47 +6,14 @@ last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
   tables: []
   endpoints:
-  - GET /debug/beliefs/checkpoints
-  - GET /debug/beliefs/quantities
-  - GET /debug/crosswalk
-  - GET /debug/events
-  - GET /debug/events/kinds
-  - GET /debug/orders
-  - GET /debug/orders/{order_id}
-  - GET /debug/orgs
-  - GET /debug/segments
-  - GET /debug/stats
   - GET /health
-  - POST /context-analysis
-  - POST /recommendations
-  types:
-  - CharityRecommendation
-  - ContextAnalysisResponse
-  - RecommendationRequest
-  - RecommendationResponse
-  api_modules:
-  - placer.api
-  - placer.api.debug
-  - placer.api.server
-  - placer.db
+  types: []
+  api_modules: []
   files:
   - placer/db.py
   - placer/api/server.py::health
 writes: []
-reads:
-- GET /debug/beliefs/checkpoints
-- GET /debug/beliefs/quantities
-- GET /debug/crosswalk
-- GET /debug/events
-- GET /debug/events/kinds
-- GET /debug/orders
-- GET /debug/orders/{order_id}
-- GET /debug/orgs
-- GET /debug/segments
-- GET /debug/stats
-- GET /health
-- POST /context-analysis
-- POST /recommendations
+reads: []
 ---
 ## Capability — what it can do
 

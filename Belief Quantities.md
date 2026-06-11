@@ -6,60 +6,23 @@ last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:
   tables:
   - belief_checkpoints
-  - candidates
-  - crosswalk_edges
-  - events
-  - orders
-  - orgs
   - quantity_registry
-  - segments
   endpoints:
-  - GET /beliefs/checkpoints
   - GET /beliefs/quantities
-  - GET /crosswalk
-  - GET /debug/beliefs/checkpoints
   - GET /debug/beliefs/quantities
-  - GET /debug/crosswalk
-  - GET /debug/events
-  - GET /debug/events/kinds
-  - GET /debug/orders
-  - GET /debug/orders/{order_id}
-  - GET /debug/orgs
-  - GET /debug/segments
-  - GET /debug/stats
-  - GET /events
-  - GET /events/kinds
-  - GET /orders
-  - GET /orders/{order_id}
-  - GET /orgs
-  - GET /segments
-  - GET /stats
-  - POST /ingest-order
-  types:
-  - CheckpointRecord
-  - ManualItemInput
-  - ManualOrderInput
-  - QuantityRecord
+  types: []
   api_modules:
-  - placer.api.debug
-  - placer.beliefs.store
   - placer.db
   - placer.events
-  - placer.identity
   files:
   - frontend/src/api.ts
   - placer/api/debug.py::list_quantities
   - placer/beliefs/store.py
   - placer/db.py
-writes:
-- orders
+writes: []
 reads:
 - belief_checkpoints
-- candidates
-- events
-- frontend/src/api.ts
-- placer/api/debug.py
-- segments
+- quantity_registry
 ---
 ## Capability — what it can do
 

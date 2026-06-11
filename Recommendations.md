@@ -4,38 +4,18 @@ group: Matching
 last_synced: '2026-06-11'
 last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
 anchors:
-  tables:
-  - belief_checkpoints
-  - candidates
-  - crosswalk_edges
-  - events
-  - orders
-  - orgs
-  - quantity_registry
-  - segments
+  tables: []
   endpoints:
-  - GET /health
-  - POST /context-analysis
   - POST /recommendations
   types:
-  - CharityRecommendation
-  - ContextAnalysisResponse
   - RecommendationRequest
   - RecommendationResponse
-  api_modules:
-  - placer.api
-  - placer.api.debug
-  - placer.api.server
-  - placer.db
+  api_modules: []
   files:
   - placer/db.py
   - placer/api/server.py::recommendations
-writes:
-- placer/api/server.py
-reads:
-- placer/api/debug.py
-- placer/api/server.py
-- placer/db.py
+writes: []
+reads: []
 ---
 ## Capability — what it can do
 
