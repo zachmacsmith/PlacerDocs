@@ -65,7 +65,6 @@ writes:
 - belief_checkpoints
 reads:
 - placer/beliefs/store.py
-- placer/beliefs/types.py
 ---
 ## Capability — what it can do
 

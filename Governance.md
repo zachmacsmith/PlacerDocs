@@ -14,6 +14,8 @@ anchors:
   - EnsembleMemberStatus
   - MemberTogglePayload
   - MemberType
+  - ModelReleasePayload
+  - OrgRemapPayload
   - ParamChangePayload
   - Provenance
   - TrustTier
@@ -32,13 +34,10 @@ anchors:
   - placer/learn/types.py::MemberType
 writes:
 - members
-- placer/governance/store.py::register_member
-- placer/governance/store.py::set_param
-- placer/governance/store.py::toggle_member
 - system_params
 reads:
-- placer/governance/store.py::get_param
-- placer/governance/store.py::list_members
+- placer/events/types.py
+- placer/governance/store.py
 ---
 ## Capability — what it can do
 
