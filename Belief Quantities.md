@@ -1,6 +1,7 @@
 ---
 feature: Belief Quantities
 group: Beliefs
+first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
 last_synced: '2026-06-11'
 last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:

@@ -1,6 +1,7 @@
 ---
 feature: Governance
 group: New
+first_commit: c66cac868aea2ad3d45474337649f15a7c7db058
 last_synced: '2026-06-12'
 last_commit: c66cac868aea2ad3d45474337649f15a7c7db058
 anchors:

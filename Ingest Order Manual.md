@@ -1,6 +1,7 @@
 ---
 feature: Ingest Order Manual
 group: New
+first_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 last_synced: '2026-06-11'
 last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
 anchors:

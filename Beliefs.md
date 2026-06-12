@@ -1,6 +1,7 @@
 ---
 feature: Beliefs
 group: Placer
+first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
 last_synced: '2026-06-12'
 last_commit: c66cac868aea2ad3d45474337649f15a7c7db058
 anchors:
