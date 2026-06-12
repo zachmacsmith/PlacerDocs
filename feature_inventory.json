@@ -476,6 +476,20 @@
       "feature_name": "Ingest",
       "group": "New",
       "page_file": "Ingest.md"
+    },
+    {
+      "route": "/placer/governance",
+      "nav_title": "Governance",
+      "component": "governance",
+      "component_file": "placer/governance/store.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Governance",
+      "group": "New",
+      "page_file": "Governance.md"
     }
   ],
   "generated_at": "2026-06-11T15:36:24Z"
