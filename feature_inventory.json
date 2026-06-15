@@ -490,6 +490,48 @@
       "feature_name": "Governance",
       "group": "New",
       "page_file": "Governance.md"
+    },
+    {
+      "route": "/placer/controllers",
+      "nav_title": "Controllers",
+      "component": "controllers",
+      "component_file": "placer/controllers/__init__.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Controllers",
+      "group": "New",
+      "page_file": "Controllers.md"
+    },
+    {
+      "route": "/placer/core",
+      "nav_title": "Core",
+      "component": "core",
+      "component_file": "placer/core/__init__.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Core",
+      "group": "New",
+      "page_file": "Core.md"
+    },
+    {
+      "route": "/placer/members",
+      "nav_title": "Members",
+      "component": "members",
+      "component_file": "placer/members/__init__.py",
+      "guards": [],
+      "availability": {
+        "gates": [],
+        "status": "available"
+      },
+      "feature_name": "Members",
+      "group": "New",
+      "page_file": "Members.md"
     }
   ],
   "generated_at": "2026-06-11T15:36:24Z"
