@@ -3,7 +3,7 @@ feature: API
 group: Placer
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
 last_synced: '2026-06-16'
-last_commit: cf05efbdebcc895b1cbd9fbfa7376868d3584da1
+last_commit: e75bcb47650c6c56370cc10193be5f08ae3490e8
 anchors:
   tables:
   - belief_checkpoints
@@ -42,7 +42,8 @@ reads:
 - crosswalk_edges
 - events
 - orgs
-- placer/api/debug.py
+- placer/adapters/shadow.py
+- placer/api/server.py
 - quantity_registry
 - segments
 ---
@@ -84,7 +85,7 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 **Debug endpoint pattern**: Every handler in `debug.py` opens a `get_conn()` context, issues one or two raw SQL queries against the named table(s), fetches all result rows as plain tuples, and serialises them into a dict. Datetime columns are converted with `.isoformat()` before inclusion. Pagination is enforced via FastAPI `Query` bounds on `limit`/`offset` parameters at the handler level; no ORM layer is involved.
 
-**Worker contract endpoints** (`server.py`): `POST /recommendations` and `POST /context-analysis` verify the `X-API-Key` header against a comma-separated `API_KEYS` environment variable before processing. `POST /recommendations` is fully wired: it calls `recommend()` from the pipeline module, commits the resulting database writes, and assembles a `RecommendationResponse` whose `CharityRecommendation` entries carry Placer-specific `factor_breakdown` (five probability scores plus a gate-pass flag) and `provenance_bridges` derived from each candidate's surfaced-by set. `POST /context-analysis` still returns a static `"Context analysis not yet implemented in Placer."` message.
+**Worker contract endpoints** (`server.py`): `POST /recommendations` and `POST /context-analysis` verify the `X-API-Key` header against a comma-separated `API_KEYS` environment variable before processing. `POST /recommendations` is fully wired: it calls `recommend()` from the pipeline module, commits the resulting database writes, and assembles a `RecommendationResponse` whose `CharityRecommendation` entries carry Placer-specific `factor_breakdown` (five probability scores plus a gate-pass flag) and `provenance_bridges` derived from each candidate's surfaced-by set. After the response is assembled, a fire-and-forget `asyncio.Task` invokes the shadow adapter's `shadow_compare()` — which calls the incumbent worker (if `INCUMBENT_URL` is set) and logs both responses as a `DECISION_VALUATION_SNAPSHOT` event for offline baseline comparison. Errors in the shadow path are caught and logged; they never affect the serving response. `POST /context-analysis` still returns a static `"Context analysis not yet implemented in Placer."` message.
 
 **Pydantic models**: `RecommendationRequest`, `RecommendationResponse`, `CharityRecommendation`, and `ContextAnalysisResponse` are declared in `server.py` and match Simpli's incumbent mission-match worker contract, with additive Placer-specific fields (`factor_breakdown`, `provenance_bridges`) that are contract-compatible.
 
@@ -94,7 +95,7 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 **`GET /health`**: Implemented and unauthenticated; always returns `{"status": "ok", "service": "placer"}` without touching the database.
 
-**`POST /recommendations`**: Fully implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint calls the real `recommend()` pipeline, commits database writes, and returns a ranked `RecommendationResponse` with per-candidate factor breakdowns and provenance bridges. Version metadata is `"placer_version": "0.1.0"`. Requires a reachable PostgreSQL instance and valid `API_KEYS`; returns a 401 if the key is absent or invalid.
+**`POST /recommendations`**: Fully implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint calls the real `recommend()` pipeline, commits database writes, and returns a ranked `RecommendationResponse` with per-candidate factor breakdowns and provenance bridges. Version metadata is `"placer_version": "0.1.0"`. After responding, a shadow-comparison task is fired asynchronously: if `INCUMBENT_URL` is set, it calls the incumbent worker and logs both sets of recommendations as a comparison event; if `INCUMBENT_URL` is absent the shadow step is silently skipped. Requires a reachable PostgreSQL instance and valid `API_KEYS`; returns a 401 if the key is absent or invalid.
 
 **`POST /context-analysis`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. Returns a static `"Context analysis not yet implemented in Placer."` message. No analysis logic is connected.
 

@@ -3,7 +3,7 @@ feature: Recommendations
 group: Matching
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
 last_synced: '2026-06-16'
-last_commit: cf05efbdebcc895b1cbd9fbfa7376868d3584da1
+last_commit: e75bcb47650c6c56370cc10193be5f08ae3490e8
 anchors:
   tables: []
   endpoints:
@@ -13,6 +13,7 @@ anchors:
   - RecommendationRequest
   - RecommendationResponse
   api_modules:
+  - placer.adapters
   - placer.api
   - placer.core
   - placer.db
@@ -22,7 +23,6 @@ anchors:
 writes: []
 reads:
 - placer/api/server.py
-- placer/pipeline.py
 ---
 ## Capability — what it can do
 

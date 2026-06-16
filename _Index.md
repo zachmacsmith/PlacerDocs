@@ -2,7 +2,7 @@
 
 > Bayesian placement controller for charity-donation matching
 
-**35 documented features** across 9 groups. Source commit: `cf05efbdebcc`
+**35 documented features** across 9 groups. Source commit: `e75bcb47650c`
 
 ## Source directory map
 
