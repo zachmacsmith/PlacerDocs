@@ -2,26 +2,24 @@
 feature: List Orders
 group: Orders
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - candidates
   - orders
   endpoints:
-  - GET /debug/orders
   - GET /orders
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - placer/db.py
   - placer/api/debug.py::list_orders
 writes: []
 reads:
 - candidates
 - orders
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 
@@ -38,7 +36,7 @@ The `limit` query parameter (1–200, default 50) controls how many orders are r
 
 ## Implementation — how it works
 
-The handler `list_orders` lives in `placer/api/debug.py` and is registered on a FastAPI `APIRouter` with the prefix `/debug` and tag `debug`. The effective mounted path exposed to clients is `GET /debug/orders`.
+The handler `list_orders` lives in `placer/api/debug.py` and is registered on a FastAPI `APIRouter` with the prefix `/debug` and tag `debug`. The router prefix means the HTTP path clients call is `/debug/orders`; the feature table identifies this feature by the canonical route `GET /orders`.
 
 **Database access** is performed through `placer.db.get_conn`, an async context manager that lazily initialises a `psycopg_pool.AsyncConnectionPool` (min 2, max 10 connections) backed by the `DATABASE_URL` environment variable via `placer.db.init_pool`. The pool is module-level and shared across all requests; `placer.db.close_pool` tears it down on shutdown.
 
@@ -50,7 +48,7 @@ The handler `list_orders` lives in `placer/api/debug.py` and is registered on a 
 
 ## Availability — is it usable right now
 
-The handler `list_orders` is **present in source** (`placer/api/debug.py`) and registered on the `/debug` router at `GET /debug/orders`. The feature table confirms `GET /orders` maps to this component with no guards. Assuming the router is mounted into the main FastAPI application and runtime preconditions are met, the endpoint is operational.
+The handler `list_orders` is **present in source** (`placer/api/debug.py`) and registered on the `/debug` router; the HTTP path is `/debug/orders`. The feature table records this feature under the canonical route `GET /orders` with no guards. Assuming the router is mounted into the main FastAPI application and runtime preconditions are met, the endpoint is operational.
 
 **Preconditions for a successful response:**
 - `DATABASE_URL` must be set in the environment; its absence causes `placer.db.get_database_url` to raise `RuntimeError` at connection time.

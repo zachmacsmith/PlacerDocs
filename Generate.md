@@ -2,40 +2,27 @@
 feature: Generate
 group: Placer
 first_commit: c66cac868aea2ad3d45474337649f15a7c7db058
-last_synced: '2026-06-12'
-last_commit: c66cac868aea2ad3d45474337649f15a7c7db058
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables: []
   endpoints: []
   types:
-  - BridgeFamily
-  - BridgeMediator
   - CanonicalizeResult
-  - ClaimedGenerality
   - ConditionalTrigger
-  - ElicitationMethod
   - Hypothesis
   - HypothesisProvenance
   - MintProposal
   - SegmentAssignment
   api_modules:
-  - placer.identity
-  - placer/contracts.py::CanonicalizeContract
-  - placer/contracts.py::GenerateContract
-  - placer/contracts.py::Hypothesis
-  - placer/contracts.py::HypothesisProvenance
-  - placer/contracts.py::MintProposal
-  - placer/events/types.py::GeneratedHypothesis
-  - placer/events/types.py::InferenceGenerationPayload
+  - placer.core
   files:
-  - placer/generate/**
-  - placer/generate/types.py
+  - placer/members/proposers/**
 writes: []
 reads:
-- placer/contracts.py
-- placer/events/types.py
-- placer/generate/types.py
-- placer/identity/types.py
+- placer/core/contracts.py
+- placer/core/events.py
+- placer/members/proposers/bridge_battery.py
 ---
 ## Capability — what it can do
 
@@ -55,18 +42,18 @@ It provides three distinct layers of vocabulary:
 
 ## Implementation — how it works
 
-`placer/generate/types.py` is a pure-types module with no I/O: it imports only `pydantic`, `enum.StrEnum`, and `HypothesisId`/`SegmentId` from `placer.identity.types`, then declares all structs, enumerations, and module-level constants used by downstream operator implementations.
+`placer/members/proposers/bridge_battery.py` is a pure-types module with no I/O: it imports only `pydantic`, `enum.StrEnum`, and `HypothesisId`/`SegmentId` from `placer.core.ids`, then declares all structs, enumerations, and module-level constants used by downstream operator implementations.
 
-**Operator contract.** `placer/contracts.py` defines `GenerateContract`, the abstract interface that a concrete generator must implement. Its single abstract method `generate(item, constraints, beliefs) → list[Hypothesis]` is documented as "consults beliefs first (lookup-before-generate as edges accrete)", meaning the generator is expected to check the `BeliefStore` for an existing crosswalk edge before invoking a model. The contract also includes `CanonicalizeContract` (maps a hypothesis to segment assignments or a mint proposal) as a sister operator in the same pipeline stage.
+**Operator contract.** `placer/core/contracts.py` defines `GenerateContract`, the abstract interface that a concrete generator must implement. Its single abstract method `generate(item, constraints, beliefs) → list[Hypothesis]` is documented as "consults beliefs first (lookup-before-generate as edges accrete)", meaning the generator is expected to check the `BeliefStore` for an existing crosswalk edge before invoking a model. The contract also includes `CanonicalizeContract` (maps a hypothesis to segment assignments or a mint proposal) as a sister operator in the same pipeline stage.
 
-**Event spine integration.** `placer/events/types.py` defines `InferenceGenerationPayload` and its embedded `GeneratedHypothesis` model. Each generation run that reaches the event spine is recorded under `EventKind.INFERENCE_GENERATION`, carrying model version, prompt version, bridge ID, per-hypothesis data, and token count. This is the audit record that `Learn` folds into belief checkpoints.
+**Event spine integration.** `placer/core/events.py` defines `InferenceGenerationPayload` and its embedded `GeneratedHypothesis` model. Each generation run that reaches the event spine is recorded under `EventKind.INFERENCE_GENERATION`, carrying model version, prompt version, bridge ID, per-hypothesis data, and token count. This is the audit record that `Learn` folds into belief checkpoints.
 
-**Parallel type definitions.** `placer/contracts.py` contains its own `Hypothesis`, `SegmentAssignment`, `HypothesisProvenance`, and `MintProposal` models that mirror those in `placer/generate/types.py` but are typed more loosely (bridge family/mediator stored as plain `str` rather than `StrEnum`). The contracts file is the frozen operator interface; the generate types file is the richer internal representation. Callers within the generate subsystem use the typed enumerations; the contract layer uses string fields for cross-boundary stability.
+**Parallel type definitions.** `placer/core/contracts.py` contains its own `Hypothesis`, `SegmentAssignment`, `HypothesisProvenance`, and `MintProposal` models that mirror those in `placer/members/proposers/bridge_battery.py` but are typed more loosely (bridge family/mediator stored as plain `str` rather than `StrEnum`). The contracts file is the frozen operator interface; the bridge battery module is the richer internal representation. Callers within the generate subsystem use the typed enumerations; the contract layer uses string fields for cross-boundary stability.
 
 ## Availability — is it usable right now
 
-`placer/generate/types.py` is present in the codebase and importable. The route `/placer/generate` appears in the feature table with no guards, indicating no authentication barrier is declared at the routing layer.
+`placer/members/proposers/bridge_battery.py` (formerly `placer/generate/types.py`, renamed in the most recent reorganisation) is present in the codebase and importable. The route `/placer/generate` appears in the feature table with no guards, indicating no authentication barrier is declared at the routing layer. The module now lives under the `placer.members.proposers` package and imports `HypothesisId`/`SegmentId` from `placer.core.ids`.
 
-However, `GenerateContract` in `placer/contracts.py` is an abstract base class with no concrete implementation found in the searched codebase. No file was found importing `placer.generate.types` outside of the contracts and events modules, and no concrete `generate()` handler was located. **The type vocabulary and abstract contract are defined; a runtime implementation that executes hypothesis generation has not been confirmed in the code.** Whether the `/placer/generate` route returns generated hypotheses in a deployed environment cannot be verified from the current source state alone.
+The frozen operator contracts (`GenerateContract`, `CanonicalizeContract`) are defined in `placer/core/contracts.py`. However, both are abstract base classes with no concrete implementation confirmed in the searched codebase. **The type vocabulary and abstract contracts are defined; a runtime implementation that executes hypothesis generation has not been confirmed in the code.** Whether the `/placer/generate` route returns generated hypotheses in a deployed environment cannot be verified from the current source state alone.
 
 No changelog is configured, so there is no release-intent context to reconcile against.

@@ -3,160 +3,68 @@ feature: Core
 group: New
 first_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 last_synced: '2026-06-15'
-last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
+last_commit: 7fdd634f38a1f90503ccc57e81634980b0f2102f
 anchors:
-  tables:
-  - events
-  - members
-  - system_params
+  tables: []
   endpoints: []
-  types:
-  - AddCandidatePayload
-  - AllocatorContract
-  - BeliefCheckpointPayload
-  - BeliefStore
-  - CandidateId
-  - CanonicalizeContract
-  - ContactId
-  - DispatchAction
-  - DispatchCandidateRecord
-  - DispatchContract
-  - DispatchKind
-  - DispatchPayload
-  - DonorId
-  - Ein
-  - EntityRefs
-  - Event
-  - EventKind
-  - EventLog
-  - EventSeq
-  - ExplorationSlotPurpose
-  - FactorBreakdown
-  - GateVerdict
-  - GenerateContract
-  - Hypothesis
-  - HypothesisId
-  - HypothesisProvenance
-  - IndexSchema
-  - InferenceGenerationPayload
-  - InferenceRerankPayload
-  - IngestContract
-  - IngestOrderPayload
-  - IngestOrgSnapshotPayload
-  - IngestPalletGroupPayload
-  - LearnContract
-  - LifecycleTransitionPayload
-  - MemberTogglePayload
-  - MembershipUpdatePayload
-  - MintProposal
-  - ModelReleasePayload
-  - OrderId
-  - OrgId
-  - OrgMintedPayload
-  - OrgRemapPayload
-  - OutcomePayload
-  - OutcomeSourceContract
-  - OverridePayload
-  - PalletGroupId
-  - ParamChangePayload
-  - ProjectionContract
-  - Provenance
-  - QuantityId
-  - QuantityRegistryEntry
-  - QuantityType
-  - ReasonCode
-  - ReasonCodeFamily
-  - RecordContract
-  - RejectScopedPayload
-  - Resolution
-  - ResolutionConfidence
-  - ResolutionMethod
-  - ResolveContract
-  - RetrievalQueryPayload
-  - SegmentAssignment
-  - SegmentId
-  - SegmentMergedPayload
-  - SegmentMintedPayload
-  - StreamId
-  - TrustTier
-  - UnspscClass
-  - UnspscFamily
-  - Valuation
-  - ValuationSnapshotPayload
-  - ValueContract
-  - WantProvenance
-  api_modules:
-  - placer/core/events.py::append
-  - placer/core/events.py::latest_seq
-  - placer/core/events.py::query
-  - placer/core/member_registry.py::get_param
-  - placer/core/member_registry.py::list_members
-  - placer/core/member_registry.py::register_member
-  - placer/core/member_registry.py::set_param
-  - placer/core/member_registry.py::toggle_member
-  - placer/core/resolver.py::beta_fold_failure
-  - placer/core/resolver.py::beta_fold_success
-  - placer/core/resolver.py::coherence_priced_c
-  - placer/core/resolver.py::partially_pool
-  - placer/core/resolver.py::resolve_belief_from_checkpoint
-  - placer/core/resolver.py::resolve_inherited_belief
-  - placer/core/resolver.py::resolve_tree_backoff
+  types: []
+  api_modules: []
   files:
   - placer/core/**
-  - placer/core/__init__.py
-  - placer/core/contracts.py
-  - placer/core/events.py
-  - placer/core/ids.py
-  - placer/core/member_registry.py
-  - placer/core/quantities.py
-  - placer/core/resolver.py
-writes:
-- placer/core/events.py::append
-- placer/core/member_registry.py::register_member
-- placer/core/member_registry.py::set_param
-- placer/core/member_registry.py::toggle_member
+writes: []
 reads:
-- placer/core/events.py::latest_seq
-- placer/core/events.py::query
-- placer/core/member_registry.py::get_param
-- placer/core/member_registry.py::list_members
+- placer/core/__init__.py
+- placer/core/contracts.py
+- placer/core/events.py
+- placer/core/ids.py
+- placer/core/member_registry.py
+- placer/core/predicates.py
+- placer/core/quantities.py
 ---
 ## Capability — what it can do
 
-`placer/core` is the constitutional layer (spec V2 §VIII.3, T1 tier) that defines the platform's immutable shared vocabulary. It provides five distinct capabilities that all other modules depend on:
+The core package is the constitutional layer (spec V2 §VIII.3) of the Placer platform. It provides four categories of foundational capability that every other module consumes but may not extend or replace without a spec-level migration:
 
-1. **ID spaces** (`ids.py`): Twelve `NewType`-wrapped canonical identifier types (`OrgId`, `OrderId`, `CandidateId`, `SegmentId`, `HypothesisId`, `QuantityId`, `EventSeq`, `OrgId`, `DonorId`, `ContactId`, `StreamId`, `PalletGroupId`, `Ein`, `UnspscFamily`, `UnspscClass`) plus a `Resolution` model carrying `ResolutionConfidence` and `ResolutionMethod`. Type wrappers prevent cross-space confusion at call sites; `resolve(raw) → (canonical_id, confidence)` is the declared only door into each space.
+**ID spaces** (`placer/core/ids.py`): Defines all canonical identifier types — `OrgId`, `OrderId`, `CandidateId`, `SegmentId`, `HypothesisId`, `QuantityId`, `AttributeId`, `GateId`, `EventSeq`, and others — as Python `NewType` wrappers that prevent cross-space confusion at call sites. `resolve(raw) → (canonical_id, confidence)` is declared here as the sole entry point into any ID space, accompanied by `Resolution`, `ResolutionConfidence`, and `ResolutionMethod` models.
 
-2. **Event spine** (`events.py`): The complete `EventKind` registry (40 named kinds across ingestion, inference, retrieval, decision, outcome, identity, belief, lifecycle, and system namespaces), all typed payload Pydantic models, `TrustTier`, `Provenance`, `EntityRefs`, `ReasonCode`/`ReasonCodeFamily`, and `FactorBreakdown`. The `append()` coroutine is the **single insert site** into the `events` table — no other code may `INSERT INTO events` (enforced by `tests/conformance/test_sacred_append.py`). A `query()` coroutine and `latest_seq()` complete the read interface.
+**Event spine** (`placer/core/events.py`): Maintains the append-only event table that everything downstream derives from. The module owns the full `EventKind` registry (60+ kinds spanning ingestion, inference, retrieval, decision, outcome, identity, constraint gate lifecycle, review workflow, belief, lifecycle, and system governance events), all typed payload models (`IngestOrderPayload`, `DispatchPayload`, `OutcomePayload`, V2.1 constraint/attribute/elicitation/review payloads, etc.), the `ReasonCode` / `ReasonCodeFamily` taxonomy, the `FactorBreakdown` model (the mandatory gate-and-factor decomposition: `p_accept = gates_pass_indicator × p_fit_residual × p_want × p_cap × p_resp`), and the `Provenance` / `TrustTier` structs. `EntityRefs` now carries optional `attribute_id` and `gate_id` fields to link events to V2.1 constraint and attribute entities. The `append()` function is the **single INSERT site** into the `events` table; no other module in the codebase may issue a direct `INSERT INTO events` (enforced by a conformance test). A `query()` function and `latest_seq()` helper are also provided for read access.
 
-3. **Quantity registry** (`quantities.py`): Fourteen named belief quantities (e.g. `p_want`, `p_fit`, `p_resp`, `cap_volume`, `lambda_ops`, `donor_reliability`) with typed estimand text, `QuantityType` (Prob, Volume, Rate, Duration, Money, Weights), and `IndexSchema` assignments. Minting rules (estimand + ≥1 real-evidence fold + ≥1 consumer) are enforced as convention, not code.
+**Quantity registry** (`placer/core/quantities.py`): Declares the closed set of belief quantities — `p_want`, `p_donor_approve`, `p_fit`, `p_fit_archetype`, `p_resp`, `p_resp_pooled`, `resp_time`, `resp_time_pooled`, `cap_volume`, `cap_volume_pooled`, `lambda_ops`, `donor_reliability`, `p_attr`, `member_weight`, `proposer_coverage_credit`, `member_calibration` — each with a typed estimand sentence, `QuantityType`, and `IndexSchema`. Two new index schemas support V2.1 quantities: `attribute_org` (size-band × NTEE attribute posteriors) and `member_context` (ensemble member stacking weights and calibration scores). Minting rules are legislative: a new quantity requires a real-evidence fold and at least one consumer.
 
-4. **Operator contracts** (`contracts.py`): Abstract base classes forming the complete interface surface for every stage in the pipeline — `IngestContract`, `GenerateContract`, `CanonicalizeContract`, `ResolveContract`, `ValueContract` (pure function, `FactorBreakdown` mandatory), `DispatchContract`, `RecordContract`, `LearnContract`, `OutcomeSourceContract`, `BeliefStore`, `EventLog`, `AllocatorContract`, and `ProjectionContract`. Changing any contract is a re-architecture, not a refactor.
+**Resolver semantics** (`placer/core/resolver.py`): Implements the read-time, precision-weighted belief resolution protocol (spec V2 §IV.3–IV.5). Three composition modes are present: `resolve_belief_from_checkpoint()` for direct lookup, `resolve_inherited_belief()` for membership-weighted mixture, and `partially_pool()` for conjugate shrinkage toward a prior. `resolve_tree_backoff()` implements coherence-priced hierarchical backoff, where certainty reduces with incoherence rather than tree height (§IV.5). Conjugate fold helpers `beta_fold_success()` and `beta_fold_failure()` are also defined here. This module carries a documented import exception: it imports `beliefs.representations` (a T2a module) because the resolver semantics require representation types to be expressed at all — the only departure from core's otherwise-inward-only import discipline, enforced by a conformance test.
 
-5. **Resolver semantics** (`resolver.py`): Conjugate-and-mixture belief composition functions — `resolve_belief_from_checkpoint`, `resolve_inherited_belief`, `partially_pool`, `resolve_tree_backoff`, and `coherence_priced_c` — that implement spec V2 §IV.3–IV.5 (precision-weighted, partial-pooling, coherence-priced tree backoff). Also provides `beta_fold_success`/`beta_fold_failure` conjugate update helpers.
+**Constraint layer** (`placer/core/predicates.py`): Declares the closed constitutional set of constraint predicates as `PredicateId` (a `StrEnum`), organised into five groups per spec V2.1 §IV.8.2: item attributes (`HAZMAT_CLASS`, `FAMILY_SUBSUMPTION`, `REFRIGERATION`, `EXPIRY`, `LOT_SIZE`, `CONDITION_GRADE`, `TEMPERATURE_RANGE`), org attributes (`ORG_CAPABILITY`, `ORG_RESTRICTION`, `ORG_CERTIFICATION`), geography (`GEOGRAPHIC_DISTANCE`, `GEOGRAPHIC_EXCLUSION`, `SERVICE_AREA`), regulatory/compliance (`REGULATORY_BLOCK`), and donor-sourced (`DONOR_RESTRICTION`, `DONOR_EXCLUSION`). `RESTRICTION_CONFLICT` is retained as a legacy alias mapping to the V2.0 skeleton. The vocabulary is closed — adding a predicate is a T1 change requiring migration and rationale. Beyond the predicate vocabulary, this module also owns the three closed **compile forms** (`CompileForm`: `HARD_GATE`, `TRANSFORMATION_PRECONDITION`, `PRIOR_INJECTION`) per §IV.8.1, the **`GateInstance`** runtime model (T2b, derived from `constraint.*` events; tracks `gate_id`, `compile_form`, `predicate_id`, `predicate_args`, `scope`, `provenance_tier`, TTL, epsilon, and lifecycle counters), the **`GateStatus`** enum (`ACTIVE`, `DEMOTED`, `RETIRED`, `SUPERSEDED`), and the **`SegmentStatus`** enum (`PROVISIONAL`, `ESTABLISHED`, `MERGED`, `ARCHIVED`). The syntax ceiling is conjunctions over registered predicates plus subsumption and distance; disjunction-of-conjunctions, negation-of-segments, and recursion are prohibited.
 
-6. **Member registry** (`member_registry.py`): Evented write helpers (`set_param`, `register_member`, `toggle_member`) for the T4 system-params and T3 ensemble-members tables, where the event is appended before the derived row is updated — the only legal write path for those tables.
+**Contracts** (`placer/core/contracts.py`): Defines the frozen abstract interfaces — `IngestContract`, `GenerateContract`, `CanonicalizeContract`, `CompileContract`, `ResolveContract`, `ValueContract`, `DispatchContract`, `RecordContract`, `LearnContract`, `OutcomeSourceContract`, `BeliefStore`, `EventLog`, `AllocatorContract`, and `ProjectionContract` — that partition the system into independently testable and replaceable components. `CompileContract` is the new compile-phase interface: its single `compile(statement, source_event, provenance) → CompileResult | None` method turns a declarative statement into a typed constraint (a `CompileResult` bearing `form: CompileForm`, `predicate_expression`, `scope`, and optional `strength`), returning `None` if the statement is uncompilable and must remain flagged as free-text. The `DispatchKind` enum includes `ELICIT` alongside `REGENERATE`, `STOP`, and `REJECT_SCOPED`, authorising the dispatcher to request attribute elicitation from an operator. Changing a contract is a re-architecture event, not a refactor.
+
+**Member registry** (`placer/core/member_registry.py`): Provides the only legal write path for T4 system parameters and T3 ensemble members. `set_param()` appends a `system.param_change` event before updating `system_params`; `register_member()` and `toggle_member()` append `system.member_toggle` events before modifying the `members` table. This event-first discipline ensures every comparison spanning a parameter change remains auditable during replay.
 
 ## Implementation — how it works
 
-**Import discipline**: `core` imports nothing else internal, with exactly one documented exception — `core.resolver` imports `beliefs.representations` for its representation types, because resolver semantics are constitutional but cannot be expressed without them. This constraint is enforced by `tests/conformance/test_import_direction.py`. All other modules import from core, never the reverse.
+Core is intentionally dependency-free with respect to the rest of the Placer codebase. The module docstring declares this explicitly: "core imports nothing internal" — the one documented exception being `placer/core/resolver.py → beliefs.representations`, which is enforced by a conformance test rather than asserted by convention alone.
 
-**Event spine and sacred append**: `events.append()` validates the payload against the registered `EVENT_PAYLOAD_MODELS` dict (event kind → Pydantic model) before issuing a single `INSERT INTO events … RETURNING seq`. The returned `EventSeq` integer is the append's only side-effect. Bitemporality is load-bearing: `observed_at` (when the fact occurred) is caller-supplied; `recorded_at` defaults to `now()` in the database, enabling point-in-time replay. The `query()` function supports filtering by kind list, order, sequence watermark, and `as_known_at` for bitemporal reads.
+**Event storage model**: Events are persisted as a single append-only PostgreSQL table. Each row carries `seq` (DB-assigned integer sequence), `event_kind`, `order_id`, `entity_refs` (JSONB), `payload` (JSONB), `provenance` (JSONB), `observed_at`, and `recorded_at`. Bitemporality is load-bearing: `observed_at` records when something happened in the world; `recorded_at` (defaulted to `now()` by the DB) records when Placer learned of it. The `as_known_at` parameter on `query()` filters by `recorded_at`, enabling historical replay at any past knowledge state. Payload Pydantic models are validated at `append()` time; storage is raw JSONB.
 
-**Resolver**: Operates entirely on `BeliefCheckpoint` sufficient-stats dicts (parsed into `BetaStats`, `NormalStats`, `ScalarStats`, or `MixtureStats`). `partially_pool` combines an org-level belief with an inherited mixture via a precision-weighted shrinkage coefficient. `resolve_tree_backoff` walks a list of `(level_name, checkpoint, dispersion)` tuples, computing `coherence_priced_c` at each level so shrinkage toward the parent is reduced when the tree is internally incoherent, not simply when the tree is tall. Interval computation delegates to `scipy.stats.beta` and `scipy.stats.norm`; mixture intervals use bisection over the mixture CDF.
+**Belief resolver**: All resolver functions operate over `BeliefCheckpoint` objects (from `beliefs.representations`) and return `Belief` instances. Mixture outputs are never moment-matched away — spec §IV.3 requires that the mixture distribution be preserved as a `MixtureStats` attached to the `Belief._stats` slot. Precision weighting is membership-weight × `n_eff`. Conjugate `BetaStats` / `NormalStats` sufficient statistics flow through the tree backoff without lossy conversion until the final output, where `_collapse_to_parametric()` is used only when mixing requires it. Credible interval computation delegates to `scipy.stats.beta` and `scipy.stats.norm`; mixture quantiles are solved by bisection.
 
-**Contracts**: All contracts are abstract base classes with no implementation logic. The `ValueContract.value()` is declared as a pure function (no `async`). `FactorBreakdown.p_accept` is a derived `@property` (product of four factor probabilities) and the only computed value in core.
+**Gate-aware factor decomposition**: `FactorBreakdown` now carries a `gates_pass: bool` flag (default `True`) and a `blocking_gate_ids: list[str]` field alongside the four probability factors. The `p_accept` property applies an indicator: `gates_pass_indicator × p_fit_residual × p_want × p_cap × p_resp`, where the residual fit factor (`p_fit_residual`) represents fit probability after hard gates have been evaluated. When `gates_pass` is `False`, `p_accept` is zero regardless of the factor values, and `blocking_gate_ids` records which gate instances caused the block.
 
-**Member registry writes**: `set_param` and `register_member`/`toggle_member` call `core.events.append` first, capturing the returned `EventSeq`, then perform the `INSERT`/`UPDATE` on `system_params` or `members`, referencing the event seq. An unevented parameter change would corrupt every comparison spanning it.
+**ID type safety**: All ID types are `NewType(str)` wrappers. There is no runtime enforcement — the safety guarantee is purely at the type-checker level, preventing callers from accidentally passing an `OrgId` where an `OrderId` is expected.
 
-**Tables written**: `events` (via `append`), `system_params`, `members`. **Tables read**: `events`, `system_params`, `members`.
+**Member registry write discipline**: `set_param()` and `register_member()` / `toggle_member()` call `core.events.append()` first and perform the SQL mutation second, within the same database connection. An unevented parameter change would corrupt every comparison spanning it during replay; the event-first ordering is the spec-mandated guard.
 
-## Availability — is it usable right now
+**Import direction enforcement**: A dedicated conformance test verifies that no core module (other than `placer/core/resolver.py`) imports from any non-core internal package. This makes core safe to load in isolation for schema inspection, migration tooling, and test fixtures.
 
-`placer/core` is a library module, not a service endpoint. It is available as an import to all other modules in the codebase. No HTTP route, auth guard, or feature flag governs its use; it is unconditionally loaded wherever it is imported.
+## Availability — what is usable right now
 
-The `events.append` function requires a live `psycopg.AsyncConnection` and a populated `events` table with the expected schema. The `member_registry` helpers additionally require `system_params` and `members` tables. Availability of these capabilities at runtime depends on database connectivity, not on any application-level guard.
+All seven source files (`placer/core/ids.py`, `placer/core/events.py`, `placer/core/quantities.py`, `placer/core/resolver.py`, `placer/core/contracts.py`, `placer/core/member_registry.py`, `placer/core/predicates.py`) are present in the repository and constitute the active foundation of the platform. Every other Placer module imports from at least one of them; the codebase would not function without them.
 
-`core.resolver` has a runtime dependency on `scipy` (for `scipy.stats.beta` and `scipy.stats.norm`); if `scipy` is absent the resolver will raise an `ImportError` on first use of interval computation.
+- **`placer/core/ids.py`** — All ID types (including V2.1 additions `AttributeId` and `GateId`) and `Resolution` / `ResolutionConfidence` / `ResolutionMethod` models are confirmed present and consumed widely across identity, beliefs, adapters, members, and controllers.
+- **`placer/core/events.py`** — The `EventKind` registry (60+ kinds, including V2.1 constraint gate lifecycle, review workflow, attribute identity, and elicitation decision/outcome events), all payload models, `FactorBreakdown` (with `gates_pass`, `p_fit_residual`, `blocking_gate_ids`, and the gate-indicator `p_accept` property), `ExplorationSlotPurpose` (now including `GATE_LEAK_TRIAL`), `Provenance`, `TrustTier`, and the `append()` / `query()` / `latest_seq()` functions are confirmed present. `EntityRefs` carries `attribute_id` and `gate_id` fields. The `MemberTogglePayload.to_status` field documents the lifecycle states `registered | shadow | live | retired`. The sacred-append invariant (single INSERT site) is enforced by a conformance test.
+- **`placer/core/quantities.py`** — The `REGISTERED_QUANTITIES` dictionary (16 quantities, up from 12) and `IndexSchema` / `QuantityType` enums are confirmed present. The `attribute_org` and `member_context` index schemas, and the `p_attr`, `member_weight`, `proposer_coverage_credit`, and `member_calibration` quantities are new in V2.1 and imported by downstream belief modules.
+- **`placer/core/predicates.py`** — The `PredicateId` enum (17 named predicates across item-attribute, org-attribute, geography, regulatory, and donor-sourced groups) is confirmed present, per spec V2.1 §IV.8.2. The V2.0 `RESTRICTION_CONFLICT` predicate is retained as a legacy alias. The module now also exports `CompileForm` (three closed compile forms per §IV.8.1), `GateInstance` (the runtime gate Pydantic model), `GateStatus` (four lifecycle states), and `SegmentStatus` (four segment lifecycle states). `GateInstance` depends on `GateId` from `placer/core/ids.py`; Pydantic is an additional runtime dependency.
+- **`placer/core/resolver.py`** — All resolver functions are confirmed present. The `scipy.stats` dependency is used for credible interval and quantile computations; availability at runtime depends on `scipy` being installed in the deployment environment.
+- **`placer/core/contracts.py`** — All abstract base classes are confirmed present, including the new `CompileContract` / `CompileResult` pair (compile-phase interface) and the `DispatchKind` enum which includes `ELICIT`. These are interfaces only; no concrete implementation lives in core itself.
+- **`placer/core/member_registry.py`** — Evented write helpers for `system_params` and `members` tables are confirmed present. The `toggle_member()` function now accepts `MemberStatus` (renamed from `EnsembleMemberStatus`) from the learn types module; the on-disk status values are unchanged.
 
-No changelog is configured. No discrepancies between changelog claims and code state are present.
+No access guards are declared on the `/placer/core` route. There is no changelog configured, so no pending-but-unmerged changes can be confirmed or denied from that source.

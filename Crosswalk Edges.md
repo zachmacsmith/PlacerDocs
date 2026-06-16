@@ -2,8 +2,8 @@
 feature: Crosswalk Edges
 group: Segments
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - crosswalk_edges
@@ -13,12 +13,12 @@ anchors:
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
   - placer/api/debug.py::list_crosswalk_edges
 writes: []
 reads:
 - crosswalk_edges
+- placer/api/debug.py
 - segments
 ---
 ## Capability — what it can do

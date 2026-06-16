@@ -2,8 +2,8 @@
 feature: Resolve
 group: Placer
 first_commit: c66cac868aea2ad3d45474337649f15a7c7db058
-last_synced: '2026-06-12'
-last_commit: c66cac868aea2ad3d45474337649f15a7c7db058
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables: []
   endpoints: []
@@ -11,18 +11,14 @@ anchors:
   - FusionResult
   - ResolutionDiagnostics
   - RetrievalResult
-  - RetrievalStream
   api_modules:
-  - placer.identity
+  - placer.core
   files:
-  - placer/contracts.py::ResolveContract
-  - placer/resolve/**
-  - placer/resolve/types.py
+  - placer/members/proposers/**
 writes: []
 reads:
-- placer/contracts.py::ResolveContract
-- placer/identity/types.py::OrgId
-- placer/resolve/types.py
+- placer/core/contracts.py
+- placer/members/proposers/retrieval.py
 ---
 ## Capability — what it can do
 
@@ -38,12 +34,12 @@ After retrieval, results from all three streams are merged through **Reciprocal 
 
 Per-run observability is provided by `ResolutionDiagnostics`, which records per-stream hit counts, the count surviving reranking, and the count surviving fusion — enabling funnel analysis at the archetype (hypothesis) level as described in spec §3.4.
 
-The operator contract for this stage is `ResolveContract` (defined in `placer/contracts.py`): an abstract async `resolve(hypotheses, order_id) → list[Candidate]` that guarantees full candidate provenance on output.
+The operator contract for this stage is `ResolveContract` (defined in `placer/core/contracts.py`): an abstract async `resolve(hypotheses, order_id) → list[Candidate]` that guarantees full candidate provenance on output.
 
 
 ## Implementation — how it works
 
-`placer/resolve/types.py` is the canonical type layer for the Resolve stage and is the sole file in the `placer/resolve/` module currently present in the codebase.
+`placer/members/proposers/retrieval.py` is the canonical type layer for the Resolve stage and is one of the files in the `placer/members/proposers/` package alongside `bridge_battery.py`.
 
 **Type hierarchy:**
 
@@ -55,23 +51,24 @@ The operator contract for this stage is `ResolveContract` (defined in `placer/co
 | `ResolutionDiagnostics` (Pydantic) | Per-hypothesis funnel counters across all stages |
 
 **Dependencies:**
-- `OrgId` is imported from `placer.identity.types`, anchoring Resolve firmly in the platform's canonical identity space.
+- `OrgId` is imported from `placer.core.ids` (part of the `placer.core` package), anchoring Resolve in the platform's canonical shared identity space.
 - `hypothesis_id` and `bridge_family` on `RetrievalResult` match the same fields on candidate surfacing provenance (`placer/candidates/types.py::SurfacedBy`) and on learn-layer records (`placer/learn/types.py`), establishing the traceability chain from retrieval hit back to the generating hypothesis.
 
 **Fusion mechanics (modelled, not implemented here):**
 `FusionResult.corroboration_bonus` and `distinct_family_count` encode the cross-family corroboration step: an org that surfaces under multiple bridge families (e.g. both consumption and people) receives a bonus, encoding the intuition that multi-angle corroboration is a stronger placement signal than a single-family hit. `contributing_bridges` and `contributing_hypotheses` carry the full audit trail for that bonus.
 
 **Contract boundary:**
-`ResolveContract` in `placer/contracts.py` is the abstract interface that any concrete implementation must satisfy. It is the only place in the codebase that references `resolve` as an operator function, confirming that no concrete implementation file is yet present — the types file alone is committed.
+`ResolveContract` in `placer/core/contracts.py` is the abstract interface that any concrete implementation must satisfy. It is the only place in the codebase that references `resolve` as an operator function, confirming that no concrete implementation file is yet present — the types file alone is committed.
 
 
 ## Availability — is it usable right now
 
 **Partially defined; no concrete implementation confirmed.**
 
-`placer/resolve/types.py` is present and provides the complete type contract for the retrieval, fusion, and diagnostics data structures. `ResolveContract` is declared in `placer/contracts.py`.
+`placer/members/proposers/retrieval.py` is present and provides the complete type contract for the retrieval, fusion, and diagnostics data structures. `ResolveContract` is declared in `placer/core/contracts.py`.
 
-However, no concrete class implementing `ResolveContract` was found in the codebase, and no file other than `types.py` exists under `placer/resolve/`. The `RetrievalResult`, `FusionResult`, and `ResolutionDiagnostics` types are not imported anywhere outside their own module (no `from placer.resolve` import sites were found). This means the Resolve stage is **typed but not yet wired** into the pipeline at runtime.
+However, no concrete class implementing `ResolveContract` was found in the codebase, and the `RetrievalResult`, `FusionResult`, and `ResolutionDiagnostics` types are not imported anywhere outside their own module (no `from placer.members.proposers.retrieval` import sites were found). This means the Resolve stage is **typed but not yet wired** into the pipeline at runtime.
+
+`OrgId` is sourced from `placer.core.ids` within the `placer.core` package (the platform's shared identity primitives); the import in `retrieval.py` reflects the completed migration from the legacy `placer.identity.types` path.
 
 The feature carries no access guards. There are no changelog entries to cross-reference. Until a concrete `ResolveContract` implementation is registered and called from the control loop or API layer, this feature does not execute at runtime despite having a well-specified type contract.
-

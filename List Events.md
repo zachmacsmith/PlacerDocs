@@ -2,8 +2,8 @@
 feature: List Events
 group: Events
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - events
@@ -12,7 +12,6 @@ anchors:
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
   - placer/api/debug.py::list_events
 writes: []
@@ -31,7 +30,7 @@ reads:
 
 **Companion endpoint.** `GET /debug/events/kinds` (same file, `list_event_kinds`) returns the distinct set of `event_kind` values with their row counts, allowing UIs to populate filter dropdowns with live cardinalities.
 
-**Known event kinds** (from `placer/events/types.py`, `EventKind` enum): ingestion (`ingest.order`, `ingest.org_snapshot`, `ingest.registry_sync`, `ingest.pallet_group`), inference (`inference.generation`, `inference.embedding`, `inference.rerank`, `inference.classification`), retrieval (`retrieval.query`), decision (`decision.valuation_snapshot`, `decision.dispatch`, `decision.override`, `decision.add_candidate`, `decision.stop`, `decision.reject_scoped`), outcome (`outcome.approval`, `outcome.rejection`, `outcome.disposition`, `outcome.acceptance`, `outcome.no_response`), identity (`identity.org_minted`, `identity.segment_minted`, `identity.segment_merged`), belief (`belief.checkpoint`), lifecycle (`lifecycle.transition`), and system (`system.allocator_update`).
+**Known event kinds** (from `placer/core/events.py`, `EventKind` enum): ingestion (`ingest.order`, `ingest.org_snapshot`, `ingest.registry_sync`, `ingest.pallet_group`), inference (`inference.generation`, `inference.embedding`, `inference.rerank`, `inference.classification`), retrieval (`retrieval.query`), decision (`decision.valuation_snapshot`, `decision.dispatch`, `decision.override`, `decision.add_candidate`, `decision.stop`, `decision.reject_scoped`), outcome (`outcome.approval`, `outcome.rejection`, `outcome.disposition`, `outcome.acceptance`, `outcome.no_response`), identity (`identity.org_minted`, `identity.segment_minted`, `identity.segment_merged`, `identity.org_remap`, `identity.membership_update`), belief (`belief.checkpoint`), lifecycle (`lifecycle.transition`), and system (`system.allocator_update`, `system.param_change`, `system.member_toggle`, `system.model_release`).
 
 ## Implementation — how it works
 
@@ -47,9 +46,9 @@ reads:
 
 The WHERE clause is built by accumulating condition strings and positional parameters, then joining with `AND`; when no filters are provided the clause degrades to the literal `TRUE`, keeping the query planner path consistent.
 
-**Bitemporality.** The `events` table stores two timestamps per row: `observed_at` (business time — when the fact occurred in the real world) and `recorded_at` (system time — the DB `now()` at insert). This separation is load-bearing in `placer/events/store.py`'s `query` function (which supports `as_known_at` point-in-time reads) and is surfaced directly in the debug response.
+**Bitemporality.** The `events` table stores two timestamps per row: `observed_at` (business time — when the fact occurred in the real world) and `recorded_at` (system time — the DB `now()` at insert). This separation is load-bearing in `placer/core/events.py`'s `query` function (which supports `as_known_at` point-in-time reads) and is surfaced directly in the debug response.
 
-**Type system.** Payload validation at write time is governed by `EVENT_PAYLOAD_MODELS` in `placer/events/types.py`, which maps each `EventKind` enum value to a Pydantic model. Not every `EventKind` has a registered payload model: `inference.embedding`, `inference.classification`, `retrieval.query`, `decision.stop`, and `system.allocator_update` are defined in the enum but absent from `EVENT_PAYLOAD_MODELS`, meaning their payloads pass through without structured validation at write time. The debug endpoint does not re-validate; it surfaces the raw JSONB from the DB verbatim.
+**Type system.** Payload validation at write time is governed by `EVENT_PAYLOAD_MODELS` in `placer/core/events.py`, which maps each `EventKind` enum value to a Pydantic model. Not every `EventKind` has a registered payload model: `inference.embedding`, `inference.classification`, `decision.stop`, `system.allocator_update`, and `ingest.registry_sync` are defined in the enum but absent from `EVENT_PAYLOAD_MODELS`, meaning their payloads pass through without structured validation at write time. The debug endpoint does not re-validate; it surfaces the raw JSONB from the DB verbatim.
 
 **Frontend integration.** `frontend/src/api.ts` exports `api.events(params)` and `api.eventKinds()`, which call `/debug/events` and `/debug/events/kinds` respectively. The TypeScript interfaces `EventRecord` and `EventKindCount` (both confirmed in `frontend/src/api.ts`) shape those responses on the client side. `frontend/src/views/Events.tsx` uses both: it seeds a kind filter dropdown from `eventKinds()`, drives paginated fetches (page size 50) through `events()`, and renders an expandable row table showing the three JSONB blobs (`entity_refs`, `payload`, `provenance`) inline.
 
@@ -65,6 +64,6 @@ The handler `list_events` is present and fully implemented in `placer/api/debug.
 
 **`EventKindCount` and `EventRecord` types.** These are TypeScript interface types defined in `frontend/src/api.ts`, not Python types. Both are confirmed present and actively used by `frontend/src/views/Events.tsx`.
 
-**Unregistered event kinds.** Five `EventKind` values — `inference.embedding`, `inference.classification`, `retrieval.query`, `decision.stop`, and `system.allocator_update` — have no entry in `EVENT_PAYLOAD_MODELS`. Events with these kinds can be stored and are fully readable via this endpoint, but their payloads are not validated against a typed model at write time.
+**Unregistered event kinds.** Four `EventKind` values — `inference.embedding`, `inference.classification`, `decision.stop`, and `system.allocator_update` — plus `ingest.registry_sync` have no entry in `EVENT_PAYLOAD_MODELS` (confirmed in `placer/core/events.py`). Events with these kinds can be stored and are fully readable via this endpoint, but their payloads are not validated against a typed model at write time. Note: `retrieval.query` was previously unregistered but now has a registered payload model (`RetrievalQueryPayload`).
 
 **No changelog entries.** No changelog is configured; there are no pending intent-vs-code discrepancies beyond those noted above.

@@ -2,8 +2,8 @@
 feature: Belief Checkpoints
 group: Beliefs
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - belief_checkpoints
@@ -12,9 +12,7 @@ anchors:
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - placer/db.py
   - placer/api/debug.py::list_checkpoints
 writes: []
 reads:

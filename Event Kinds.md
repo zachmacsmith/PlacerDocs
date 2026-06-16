@@ -2,38 +2,27 @@
 feature: Event Kinds
 group: Events
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-12'
-last_commit: c66cac868aea2ad3d45474337649f15a7c7db058
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - events
   endpoints:
-  - GET /debug/events/kinds
   - GET /events/kinds
-  types:
-  - EventKind
-  - MemberTogglePayload
-  - MembershipUpdatePayload
-  - ModelReleasePayload
-  - OrgRemapPayload
-  - ParamChangePayload
+  types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
   - placer/api/debug.py::list_event_kinds
-  - placer/db.py
-  - placer/events/types.py
 writes: []
 reads:
 - events
-- placer/events/types.py
 ---
 ## Capability — what it can do
 
 `GET /debug/events/kinds` returns a frequency census of every distinct `event_kind` value that exists in the `events` table. The response is a JSON object with a single `kinds` array; each element carries two fields: `kind` (the string value of the kind, e.g. `"ingest.order"` or `"outcome.approval"`) and `count` (the integer number of rows bearing that kind). Results are sorted alphabetically by kind string.
 
-The endpoint provides a quick, zero-argument way to discover which categories of system activity have actually been recorded in a given deployment. The full taxonomy of valid kinds is defined by the `EventKind` `StrEnum` in `placer/events/types.py`, which currently enumerates **31 values** across nine namespaces: `ingest` (4), `inference` (4), `retrieval` (1), `decision` (6), `outcome` (5), `identity` (5), `belief` (1), `lifecycle` (1), and `system` (4). The endpoint surfaces only kinds that have at least one row; kinds with no rows are absent from the response.
+The endpoint provides a quick, zero-argument way to discover which categories of system activity have actually been recorded in a given deployment. The full taxonomy of valid kinds is defined by the `EventKind` `StrEnum` in `placer/core/events.py`, which currently enumerates **31 values** across nine namespaces: `ingest` (4), `inference` (4), `retrieval` (1), `decision` (6), `outcome` (5), `identity` (5), `belief` (1), `lifecycle` (1), and `system` (4). The endpoint surfaces only kinds that have at least one row; kinds with no rows are absent from the response.
 
 ## Implementation — how it works
 
@@ -52,7 +41,7 @@ All rows are fetched and serialised inline into the `{"kinds": [...]}` response 
 
 No authentication guard is applied to this router or this endpoint — `app.include_router` is called without a dependency, and no `Header`-based API-key check (as used on `POST /recommendations` and `POST /context-analysis`) is present. CORS is governed by the application-level `CORSMiddleware` configured in `placer/api/server.py`.
 
-The `event_kind` column in the `events` table stores the `.value` of an `EventKind` enum member (e.g. the string `"decision.valuation_snapshot"`), written by `placer/events/store.py` at append time.
+The `event_kind` column in the `events` table stores the `.value` of an `EventKind` enum member (e.g. the string `"decision.valuation_snapshot"`), written by the `append` function in `placer/core/events.py` at append time.
 
 ## Availability — is it usable right now
 

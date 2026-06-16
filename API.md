@@ -2,8 +2,8 @@
 feature: API
 group: Placer
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-16'
+last_commit: cf05efbdebcc895b1cbd9fbfa7376868d3584da1
 anchors:
   tables:
   - belief_checkpoints
@@ -18,48 +18,31 @@ anchors:
   - GET /beliefs/checkpoints
   - GET /beliefs/quantities
   - GET /crosswalk
-  - GET /debug/beliefs/checkpoints
-  - GET /debug/beliefs/quantities
-  - GET /debug/crosswalk
-  - GET /debug/events
-  - GET /debug/events/kinds
-  - GET /debug/orders
-  - GET /debug/orders/{order_id}
-  - GET /debug/orgs
-  - GET /debug/segments
-  - GET /debug/stats
   - GET /events
   - GET /events/kinds
-  - GET /health
   - GET /orders
   - GET /orders/{order_id}
   - GET /orgs
   - GET /segments
   - GET /stats
-  - POST /context-analysis
-  - POST /recommendations
+  - POST /ingest-order
   types:
-  - CharityRecommendation
-  - ContextAnalysisResponse
-  - RecommendationRequest
-  - RecommendationResponse
+  - ManualItemInput
+  - ManualOrderInput
   api_modules:
-  - placer.api.debug
-  - placer.api.server
+  - placer.core
   - placer.db
   files:
   - placer/api/**
-  - placer/api/debug.py
-  - placer/api/server.py
-  - placer/db.py
-writes: []
+writes:
+- orders
 reads:
 - belief_checkpoints
 - candidates
 - crosswalk_edges
 - events
-- orders
 - orgs
+- placer/api/debug.py
 - quantity_registry
 - segments
 ---
@@ -95,13 +78,13 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 ## Implementation — how it works
 
-**Application bootstrap** (`placer/api/server.py`): A FastAPI app is instantiated with a `lifespan` context manager that calls `init_pool()` on startup and `close_pool()` on shutdown. The debug router is mounted via `app.include_router(debug_router)`, inheriting the `/debug` prefix declared inside the router itself.
+**Application bootstrap** (`placer/api/server.py`): A FastAPI app is instantiated with a `lifespan` context manager that calls `init_pool()` on startup, spawns a background `asyncio.Task` that runs the belief-learner's `run_periodic()` loop every 30 seconds, and on shutdown cancels that task before calling `close_pool()`. The debug router is mounted via `app.include_router(debug_router)`, inheriting the `/debug` prefix declared inside the router itself.
 
 **Database connectivity** (`placer/db.py`): A module-level `psycopg_pool.AsyncConnectionPool` (min 2, max 10) is lazily initialised from the `DATABASE_URL` environment variable. `init_pool()` is idempotent — it returns the existing pool if already open. The `get_conn()` async context manager calls `init_pool()` on each invocation (no-op if already initialised), then acquires a connection via `pool.connection()` and yields a `psycopg.AsyncConnection[tuple]`; the pool returns the connection automatically on context exit. All debug endpoints share this single pool.
 
 **Debug endpoint pattern**: Every handler in `debug.py` opens a `get_conn()` context, issues one or two raw SQL queries against the named table(s), fetches all result rows as plain tuples, and serialises them into a dict. Datetime columns are converted with `.isoformat()` before inclusion. Pagination is enforced via FastAPI `Query` bounds on `limit`/`offset` parameters at the handler level; no ORM layer is involved.
 
-**Worker contract endpoints** (`server.py`): `POST /recommendations` and `POST /context-analysis` verify the `X-API-Key` header against a comma-separated `API_KEYS` environment variable before processing. Both endpoints currently return stub responses (empty recommendation list and a static "not yet implemented" message respectively); the comments indicate they will be backed by the full `ingest → generate → resolve → value → rank` pipeline.
+**Worker contract endpoints** (`server.py`): `POST /recommendations` and `POST /context-analysis` verify the `X-API-Key` header against a comma-separated `API_KEYS` environment variable before processing. `POST /recommendations` is fully wired: it calls `recommend()` from the pipeline module, commits the resulting database writes, and assembles a `RecommendationResponse` whose `CharityRecommendation` entries carry Placer-specific `factor_breakdown` (five probability scores plus a gate-pass flag) and `provenance_bridges` derived from each candidate's surfaced-by set. `POST /context-analysis` still returns a static `"Context analysis not yet implemented in Placer."` message.
 
 **Pydantic models**: `RecommendationRequest`, `RecommendationResponse`, `CharityRecommendation`, and `ContextAnalysisResponse` are declared in `server.py` and match Simpli's incumbent mission-match worker contract, with additive Placer-specific fields (`factor_breakdown`, `provenance_bridges`) that are contract-compatible.
 
@@ -111,9 +94,11 @@ The server also configures CORS for `localhost:5173`, `localhost:5174`, `app.sim
 
 **`GET /health`**: Implemented and unauthenticated; always returns `{"status": "ok", "service": "placer"}` without touching the database.
 
-**`POST /recommendations`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint is reachable but deliberately returns a stub empty recommendation list (`metadata.placer_version: "0.1.0-stub"`). The full ranking pipeline (noted in source comments as `ingest → generate → resolve → value → rank`) is not yet wired in.
+**`POST /recommendations`**: Fully implemented and guarded by `X-API-Key` / `API_KEYS` env-var. The endpoint calls the real `recommend()` pipeline, commits database writes, and returns a ranked `RecommendationResponse` with per-candidate factor breakdowns and provenance bridges. Version metadata is `"placer_version": "0.1.0"`. Requires a reachable PostgreSQL instance and valid `API_KEYS`; returns a 401 if the key is absent or invalid.
 
 **`POST /context-analysis`**: Implemented and guarded by `X-API-Key` / `API_KEYS` env-var. Returns a static `"Context analysis not yet implemented in Placer."` message. No analysis logic is connected.
+
+**Background belief learner**: On server startup a periodic task calls the belief-learner's fold loop every 30 seconds. This runs automatically as part of the server process; no separate worker is needed, but it depends on the same database pool as the rest of the application.
 
 **Anchor correction**: Previous anchor entries for unprefixed routes (`GET /events`, `GET /orders`, `GET /orgs`, etc.) have been removed — neither `debug.py` nor `server.py` defines routes at those paths. Only the `/debug/*` prefixed routes and the three worker-contract endpoints exist in current code.
 

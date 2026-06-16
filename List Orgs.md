@@ -2,28 +2,22 @@
 feature: List Orgs
 group: Organizations
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - orgs
   endpoints:
-  - GET /debug/orgs
   - GET /orgs
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - frontend/src/api.ts
-  - frontend/src/views/Candidates.tsx
   - placer/api/debug.py::list_orgs
-  - placer/db.py
-  - placer/identity/store.py
-  - placer/identity/types.py
 writes: []
 reads:
 - orgs
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 
@@ -43,15 +37,15 @@ The registry is a **lazy write-once structure**: rows are minted by `identity.st
 
 ## Implementation — how it works
 
-**Handler** — `list_orgs` in `placer/api/debug.py`, mounted on the `APIRouter` at prefix `/debug` with tag `debug`. The effective path is therefore `GET /debug/orgs`.
+**Handler** — `list_orgs` in `placer/api/debug.py`, mounted on the `APIRouter` at prefix `/debug` with tag `debug`. The effective path is `GET /debug/orgs` (registered in the feature table as `GET /orgs`).
 
 **Database access** — A single `SELECT org_id, ein, resolution_confidence, first_seen_seq, memberships FROM orgs ORDER BY first_seen_seq DESC LIMIT %s` is issued against the `orgs` table. The connection is acquired from the shared async `psycopg_pool.AsyncConnectionPool` managed by `placer/db.py`, which is initialised lazily from the `DATABASE_URL` environment variable with `min_size=2` and `max_size=10` connections. The pool is opened on first use via `init_pool()` and can be torn down via `close_pool()`; the `get_conn()` async context manager wraps both steps for callers.
 
 **Serialisation** — Each database row is projected into a plain Python dict. `memberships` is returned as-is (the driver deserialises the Postgres JSONB column automatically); no Pydantic model is used at the API layer. The response envelope is `{"orgs": [...]}`.
 
-**Identity model** — Org rows are originally written by `placer/identity/store.py::mint_org`, which inserts with `ON CONFLICT (org_id) DO NOTHING`. `resolve_org` performs the EIN lookup that precedes minting; a separate `get_org` function enables point-lookup by `org_id` at the store layer. The `OrgRecord`, `OrgMemberships`, `ResolutionConfidence`, and related types are defined in `placer/identity/types.py`. `ResolutionMethod` enumerates four strategies: `ein_join`, `name_address_block`, `fuzzy_match`, and `provisional`; only `ein_join` is currently wired in `resolve_org`.
+**Identity model** — Org rows are originally written by `identity.store.mint_org`, which inserts with `ON CONFLICT (org_id) DO NOTHING`. `resolve_org` performs the EIN lookup that precedes minting; a separate `get_org` function enables point-lookup by `org_id` at the store layer. `ResolutionMethod` enumerates four strategies: `ein_join`, `name_address_block`, `fuzzy_match`, and `provisional`; only `ein_join` is currently wired in `resolve_org`.
 
-**Frontend consumption** — The TypeScript client in `frontend/src/api.ts` calls `api.orgs()` → `GET /debug/orgs` and types the response with the `OrgRecord` interface. The result is rendered in the **Org Registry** sub-tab of `frontend/src/views/Candidates.tsx`, which lazy-loads on tab activation (via a `useEffect` gated on `subTab === "orgs"`) and displays org ID, EIN, a colour-coded confidence badge (`high` → green, `medium` → yellow, `provisional` → zinc), first-seen sequence, and a truncated JSON rendering of memberships.
+**Frontend consumption** — No frontend source files are present in the current codebase anchors for this feature; frontend wiring cannot be confirmed from available code.
 
 ## Availability — is it usable right now
 
@@ -61,4 +55,4 @@ Operability depends on two runtime conditions confirmed in source:
 - **`DATABASE_URL` environment variable** must be set and point to a reachable Postgres instance. `placer/db.py::get_database_url()` raises `RuntimeError("DATABASE_URL not set")` before any connection attempt if the variable is absent; this bubbles as an unhandled 500 on the first request.
 - **`orgs` table** must exist in the target database with the columns `org_id`, `ein`, `resolution_confidence`, `first_seen_seq`, and `memberships`. No migration is run automatically at startup.
 
-The `GET /debug/orgs` route is confirmed mounted at that path; the feature table also records a bare `GET /orgs` route identity for this feature — both refer to the same handler. No changelog is configured, so there is no record of staged or in-progress changes to this endpoint. The frontend `Candidates.tsx` view actively consumes this endpoint via `api.orgs()` in the Org Registry sub-tab, confirming end-to-end wiring in the current codebase.
+The route is mounted at `GET /debug/orgs` (the feature table records it as `GET /orgs`). No changelog is configured, so there is no record of staged or in-progress changes to this endpoint. Frontend consumption of this endpoint cannot be confirmed — no frontend source files are present in the current codebase anchors for this feature.

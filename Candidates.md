@@ -2,52 +2,24 @@
 feature: Candidates
 group: Placer
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 952dd6cc874c7cc4402ceb32f94baf759278beb3
 anchors:
   tables:
   - candidates
   - orders
   endpoints: []
-  types:
-  - Candidate
-  - CandidateId
-  - CandidateStage
-  - ExplorationSlotPurpose
-  - FactorBreakdown
-  - OrderId
-  - OrderLifecycleState
-  - OrderWorldState
-  - OrgId
-  - SurfacedBy
-  - ValuationSnapshot
+  types: []
   api_modules:
-  - placer.candidates
-  - placer.candidates.store
-  - placer.candidates.types
-  - placer.contracts
-  - placer.events.types
+  - placer.core
   - placer.identity
-  - placer.identity.types
   files:
-  - placer/candidates/**
-  - placer/candidates/store.py
-  - placer/candidates/types.py
-  - placer/contracts.py
-  - placer/control/types.py
-  - placer/events/types.py
-  - placer/identity/types.py
+  - placer/identity/**
 writes:
-- SET
 - candidates
-- placer/candidates/store.py
 reads:
-- placer/candidates/store.py
-- placer/candidates/types.py
-- placer/contracts.py
-- placer/control/types.py
-- placer/events/types.py
-- placer/identity/types.py
+- orders
+- placer/identity/candidates.py
 ---
 ## Capability — what it can do
 
@@ -64,10 +36,10 @@ Four concrete operations are provided:
 
 The full set is retained — including screened-out candidates — because rejects form the denominator for funnel metrics, the exploration population for retrieval-level decisions, and the fallback queue within a stream (per the module docstring and `types.py` header).
 
-The feature also owns the **canonical type definitions** consumed across the platform (imported by `placer.contracts` and `placer.control.types`):
+The feature also owns the **canonical type definitions** consumed across the platform (imported by the core contracts module and the controller type layer):
 
 - `Candidate` — the core record with provenance (`surfaced_by: list[SurfacedBy]`), lifecycle position (`stage`, `stage_reason`), and a frozen `ValuationSnapshot` captured at decision time.
-- `CandidateStage` — a six-value state machine: `SURFACED → SCREENED_OUT | VALUED → PLANNED → CONTACTED → RESOLVED`.
+- `CandidateStage` — a seven-value state machine: `SURFACED → SCREENED_OUT | GATE_BLOCKED | VALUED → PLANNED → CONTACTED → RESOLVED`. `GATE_BLOCKED` is a rejection terminal distinct from `SCREENED_OUT`, earned when a candidate fails a compiled gate predicate rather than a retrieval-level filter.
 - `SurfacedBy` — provenance entry linking a candidate to a bridge, hypothesis, segments, rank, and stream slot (`a`/`b`/`c`).
 - `ValuationSnapshot` — immutable record of `FactorBreakdown`, EMC, `contact_index`, standard deviation, and optional `ExplorationSlotPurpose` frozen at valuation time.
 - `OrderWorldState` — the system blackboard: order lifecycle, mode, volume figures (`total_volume`, `v_remaining`, `placed_volume`), deadline, full candidate list, optional `hypotheses` list, and contact/accept counts.
@@ -87,12 +59,16 @@ JSONB fields (`surfaced_by`, `valuation_snapshot`) are serialized via Pydantic `
 
 **World-state assembly.** `get_order_state` joins `orders` and `candidates` in application code rather than SQL. It calls `get_candidates_for_order` (which issues a separate `SELECT`) then derives `contact_count` (stage is `CONTACTED` or `RESOLVED`) and `accept_count` (stage is `RESOLVED` **and** `valuation_snapshot` is non-null) from the result set in memory. The returned `OrderWorldState` also carries `hypotheses` (defaults to `[]`) and `placed_volume` (defaults to `0.0`); these fields are not populated by `get_order_state` itself and must be set by callers if needed.
 
-**Type system.** Types are defined in `placer/candidates/types.py` and imported by `placer/contracts.py` and `placer/control/types.py`. `ValuationSnapshot` depends on `FactorBreakdown` and `ExplorationSlotPurpose` from `placer/events/types.py`. Identity NewTypes (`CandidateId`, `OrderId`, `OrgId`) come from `placer/identity/types.py`.
+**Type system.** Types are defined in `placer/identity/candidates.py` and imported by `placer/core/contracts.py` and `placer/controllers/types.py`. `ValuationSnapshot` depends on `FactorBreakdown` and `ExplorationSlotPurpose` from `placer/core/events.py`. Identity NewTypes (`CandidateId`, `OrderId`, `OrgId`) come from `placer/core/ids.py`.
 
 ## Availability — is it usable right now
 
-All four store functions (`upsert_candidate`, `transition_stage`, `get_candidates_for_order`, `get_order_state`) and the full type hierarchy are present in source at `placer/candidates/store.py` and `placer/candidates/types.py`. The types are actively imported by `placer/contracts.py` and `placer/control/types.py`, indicating they are load-bearing at the platform level.
+All four store functions (`upsert_candidate`, `transition_stage`, `get_candidates_for_order`, `get_order_state`) are present in source at `placer/identity/candidate_store.py`. The full type hierarchy (`Candidate`, `CandidateStage`, `SurfacedBy`, `ValuationSnapshot`, `OrderWorldState`, `OrderLifecycleState`) is defined in `placer/identity/candidates.py`. These types are actively imported by `placer/core/contracts.py` and `placer/controllers/types.py`, confirming they are load-bearing at the platform level.
+
+`CandidateStage` now carries seven values including the newly added `GATE_BLOCKED` terminal. Code presence is confirmed; whether higher-level controllers have been updated to emit or handle `GATE_BLOCKED` transitions is outside the scope of this module.
+
+The former `placer/candidates/` package (previously containing `store.py` and `types.py`) no longer exists in the codebase; all functionality has migrated into `placer/identity/candidate_store.py` and `placer/identity/candidates.py`. Identity NewTypes (`CandidateId`, `OrderId`, `OrgId`) now originate from `placer/core/ids.py`; `FactorBreakdown` and `ExplorationSlotPurpose` from `placer/core/events.py`.
 
 No HTTP endpoints, CLI entrypoints, or route handlers are registered for this module — it is a repository layer invoked programmatically by higher-level controllers. No feature guards are present.
 
-There is no `placer/candidates/__init__.py` found in the codebase; the module boundary is the two files `store.py` and `types.py` only. No changelog is configured, so no pending or in-flight changes can be confirmed from that source. Code presence is confirmed; runtime availability depends on a live `psycopg.AsyncConnection` to a PostgreSQL instance with the `candidates` and `orders` tables provisioned.
+No changelog is configured, so no pending or in-flight changes can be confirmed from that source. Code presence is confirmed; runtime availability depends on a live `psycopg.AsyncConnection` to a PostgreSQL instance with the `candidates` and `orders` tables provisioned.

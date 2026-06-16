@@ -34,7 +34,7 @@
       "route": "/placer/beliefs",
       "nav_title": "Beliefs",
       "component": "beliefs",
-      "component_file": "placer/beliefs/store.py",
+      "component_file": "placer/core/resolver.py",
       "guards": [],
       "availability": {
         "gates": [],
@@ -49,7 +49,7 @@
       "route": "/placer/candidates",
       "nav_title": "Candidates",
       "component": "candidates",
-      "component_file": "placer/candidates/store.py",
+      "component_file": "placer/identity/candidate_store.py",
       "guards": [],
       "availability": {
         "gates": [],
@@ -64,7 +64,7 @@
       "route": "/placer/control",
       "nav_title": "Control",
       "component": "control",
-      "component_file": "placer/control/types.py",
+      "component_file": "placer/controllers/types.py",
       "guards": [],
       "availability": {
         "gates": [],
@@ -76,25 +76,10 @@
       "page_file": "Control.md"
     },
     {
-      "route": "/placer/events",
-      "nav_title": "Events",
-      "component": "events",
-      "component_file": "placer/events/store.py",
-      "guards": [],
-      "availability": {
-        "gates": [],
-        "status": "available"
-      },
-      "api_calls": [],
-      "feature_name": "Events",
-      "group": "Placer",
-      "page_file": "Events.md"
-    },
-    {
       "route": "/placer/generate",
       "nav_title": "Generate",
       "component": "generate",
-      "component_file": "placer/generate/types.py",
+      "component_file": "placer/members/proposers/bridge_battery.py",
       "guards": [],
       "availability": {
         "gates": [],
@@ -154,7 +139,7 @@
       "route": "/placer/resolve",
       "nav_title": "Resolve",
       "component": "resolve",
-      "component_file": "placer/resolve/types.py",
+      "component_file": "placer/members/proposers/retrieval.py",
       "guards": [],
       "availability": {
         "gates": [],
@@ -481,7 +466,7 @@
       "route": "/placer/governance",
       "nav_title": "Governance",
       "component": "governance",
-      "component_file": "placer/governance/store.py",
+      "component_file": "placer/core/member_registry.py",
       "guards": [],
       "availability": {
         "gates": [],

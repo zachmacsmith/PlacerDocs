@@ -2,27 +2,23 @@
 feature: Belief Quantities
 group: Beliefs
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - belief_checkpoints
   - quantity_registry
   endpoints:
   - GET /beliefs/quantities
-  - GET /debug/beliefs/quantities
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - frontend/src/api.ts
   - placer/api/debug.py::list_quantities
-  - placer/beliefs/store.py
-  - placer/db.py
 writes: []
 reads:
 - belief_checkpoints
+- placer/api/debug.py
 - quantity_registry
 ---
 ## Capability — what it can do
@@ -42,13 +38,13 @@ For each quantity the endpoint returns:
 | `checkpoint_count` | Number of `belief_checkpoints` rows currently stored for this quantity |
 | `avg_n_eff` | Mean effective sample size across all checkpoints, indicating posterior concentration |
 
-The response shape is `{ "quantities": [ QuantityRecord, … ] }` where `QuantityRecord` is defined in `frontend/src/api.ts`. The endpoint takes no query parameters; it always returns the full registry ordered by `quantity_id`.
+The response shape is `{ "quantities": [ QuantityRecord, … ] }`. The endpoint takes no query parameters; it always returns the full registry ordered by `quantity_id`.
 
 ## Implementation — how it works
 
 The handler `list_quantities` in `placer/api/debug.py` is registered on the `APIRouter` with `prefix="/debug"` and included into the main FastAPI application in `placer/api/server.py` via `app.include_router(debug_router)`. The effective mounted path is therefore `/debug/beliefs/quantities`.
 
-**Database query.** The handler opens a connection from the shared async pool (`placer/db.py`, backed by `psycopg_pool.AsyncConnectionPool`, configured from the `DATABASE_URL` environment variable) and executes a single SQL query:
+**Database query.** The handler opens a connection from the shared async pool (module `placer.db`, backed by `psycopg_pool.AsyncConnectionPool`, configured from the `DATABASE_URL` environment variable) and executes a single SQL query:
 
 ```sql
 SELECT qr.quantity_id, qr.type, qr.estimand_text, qr.index_schema,
@@ -63,16 +59,16 @@ ORDER BY qr.quantity_id
 
 The `LEFT JOIN` means quantities with no checkpoints yet are still included, with `checkpoint_count = 0` and `avg_n_eff = 0.0` (the handler coalesces `None` to `0.0` in Python).
 
-**Related tables.** `quantity_registry` is the authoritative catalogue of estimands. `belief_checkpoints` holds the conjugate sufficient-statistics snapshots that `placer/beliefs/store.py` writes via `save_checkpoint`. The `n_eff` column on a checkpoint is the effective sample size computed at fold time and stored alongside the sufficient statistics (e.g. `BetaStats`, `NormalStats`, `ScalarStats`).
+**Related tables.** `quantity_registry` is the authoritative catalogue of estimands. `belief_checkpoints` holds the conjugate sufficient-statistics snapshots written by the belief subsystem. The `n_eff` column on a checkpoint is the effective sample size computed at fold time and stored alongside the sufficient statistics (e.g. `BetaStats`, `NormalStats`, `ScalarStats`).
 
-**No authentication guard.** The debug router carries no API-key middleware; the endpoint is unauthenticated and is intended for internal dashboard and operator use only. The frontend TypeScript client (`frontend/src/api.ts`, `api.quantities()`) calls this path directly.
+**No authentication guard.** The debug router carries no API-key middleware; the endpoint is unauthenticated and is intended for internal dashboard and operator use only.
 
 ## Availability — is it usable right now
 
-The route `GET /debug/beliefs/quantities` is **present and active** in the current codebase. The handler `list_quantities` exists in `placer/api/debug.py` and the `debug_router` is unconditionally mounted in `placer/api/server.py` via `app.include_router(debug_router)` — no feature flag, guard, or conditional import is present.
+The route `GET /debug/beliefs/quantities` (registered as `GET /beliefs/quantities` on the `debug` router with `prefix="/debug"`) is **present and active** in the current codebase. The handler `list_quantities` exists in `placer/api/debug.py` and the `debug_router` is unconditionally mounted in `placer/api/server.py` via `app.include_router(debug_router)` — no feature flag, guard, or conditional import is present.
 
 **Runtime prerequisites for meaningful results:**
-- `DATABASE_URL` environment variable must be set; if absent, `placer/db.py` raises `RuntimeError("DATABASE_URL not set")` before any query is executed. The pool is initialised lazily on the first `get_conn()` call (pool min_size=2, max_size=10).
+- `DATABASE_URL` environment variable must be set; if absent, the `placer.db` module raises `RuntimeError("DATABASE_URL not set")` before any query is executed. The pool is initialised lazily on the first `get_conn()` call (pool min_size=2, max_size=10).
 - The `quantity_registry` and `belief_checkpoints` tables must exist in the database. No migration helper is visible in the examined source files; their presence depends on schema provisioning outside this codebase.
 - The endpoint returns `{ "quantities": [] }` if `quantity_registry` is empty — the expected state of a freshly provisioned environment before any belief quantities have been registered.
 

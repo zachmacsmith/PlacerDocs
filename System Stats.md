@@ -2,24 +2,22 @@
 feature: System Stats
 group: System
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - events
   endpoints:
-  - GET /debug/stats
   - GET /stats
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - placer/db.py
   - placer/api/debug.py::system_stats
 writes: []
 reads:
 - events
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 

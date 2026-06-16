@@ -2,41 +2,19 @@
 feature: Overview
 group: New
 first_commit: ba02630c316c435e071a627f433a21d08f9987e7
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
-  tables:
-  - belief_checkpoints
-  - candidates
-  - crosswalk_edges
-  - events
-  - orders
-  - orgs
-  - segments
-  endpoints:
-  - GET /debug/stats
-  - GET /health
-  types:
-  - EventKindCount
-  - SystemStats
-  api_modules:
-  - api.health
-  - api.stats
-  - placer.api.debug
-  - placer.api.server
+  tables: []
+  endpoints: []
+  types: []
+  api_modules: []
   files:
-  - frontend/src/api.ts
-  - frontend/src/components/Card.tsx
-  - frontend/src/components/Table.tsx
   - frontend/src/views/**
-  - frontend/src/views/Overview.tsx
-  - placer/api/debug.py::system_stats
-  - placer/api/server.py::health
 writes: []
 reads:
-- frontend/src/api.ts
-- frontend/src/views/Ingest.tsx
 - placer/api/debug.py
+- placer/api/server.py
 ---
 ## Capability — what it can do
 

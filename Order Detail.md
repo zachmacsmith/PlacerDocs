@@ -2,26 +2,24 @@
 feature: Order Detail
 group: Orders
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - candidates
   - orders
   endpoints:
-  - GET /debug/orders/{order_id}
   - GET /orders/{order_id}
   types: []
   api_modules:
   - placer.db
-  - placer.events
   files:
-  - placer/db.py
   - placer/api/debug.py::get_order
 writes: []
 reads:
 - candidates
 - orders
+- placer/api/debug.py
 ---
 ## Capability — what it can do
 
@@ -51,7 +49,7 @@ The endpoint carries no authentication guards; it is part of the read-only debug
 
 ## Availability — is it usable right now
 
-The handler `get_order` is confirmed present in `placer/api/debug.py` and is wired to `GET /debug/orders/{order_id}` via the `APIRouter` (prefix `/debug`, tag `debug`). No authentication guards or feature flags are declared on this route or anywhere in the file.
+The handler `get_order` is confirmed present in `placer/api/debug.py` and is registered on the `APIRouter` with prefix `/debug`, resolving to `GET /debug/orders/{order_id}` at runtime. No authentication guards or feature flags are declared on this route or anywhere in the file.
 
 **Runtime prerequisites** that must be satisfied for the endpoint to respond successfully:
 - `DATABASE_URL` must be set in the environment and point to a reachable Postgres instance. If absent, `get_database_url()` in `placer/db.py` raises `RuntimeError("DATABASE_URL not set")` on the first request; this is unhandled and will produce a 500-class response.

@@ -2,71 +2,28 @@
 feature: Identity
 group: Placer
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
-last_synced: '2026-06-11'
-last_commit: 87dd52f08e97ba92e8de49eace545f1073d264af
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - crosswalk_edges
   - orgs
   - segments
   - streams
-  endpoints:
-  - GET /debug/crosswalk
-  - GET /debug/orgs
-  - GET /debug/segments
-  types:
-  - CandidateId
-  - ContactId
-  - CrosswalkEdgeKey
-  - DonorId
-  - Ein
-  - EventSeq
-  - HypothesisId
-  - OrderId
-  - OrgId
-  - OrgMemberships
-  - OrgRecord
-  - OrgRole
-  - OrgSnapshot
-  - PalletGroupId
-  - ProductClassificationRoute
-  - ProductIdentity
-  - QuantityId
-  - Resolution
-  - ResolutionConfidence
-  - ResolutionMethod
-  - Segment
-  - SegmentId
-  - SegmentMembership
-  - SegmentStatus
-  - SizeBand
-  - Stream
-  - StreamId
-  - UnspscClass
-  - UnspscFamily
+  endpoints: []
+  types: []
   api_modules:
+  - placer.core
   - placer.identity
-  - placer.identity.store
-  - placer.identity.types
   files:
-  - placer/contracts.py
   - placer/identity/**
-  - placer/identity/store.py
-  - placer/identity/types.py
-  - placer/api/debug.py::list_crosswalk_edges
-  - placer/api/debug.py::list_orgs
-  - placer/api/debug.py::list_segments
 writes:
-- SET
 - crosswalk_edges
 - orgs
-- placer/identity/store.py
 - segments
 - streams
 reads:
 - placer/api/debug.py
-- placer/api/server.py
-- placer/identity/store.py
 - placer/identity/types.py
 ---
 ## Capability — what it can do
@@ -86,7 +43,7 @@ Segments are named groupings of recipient organizations used throughout the Baye
 `upsert_stream` maintains a hub-and-spoke donation stream record (`Stream`), linking a hub org to a list of member orgs and recording a `terminal_absorption` float. Writes are idempotent via `ON CONFLICT DO UPDATE`.
 
 **Platform-wide type system**
-`placer/identity/types.py` is the authoritative NewType and Pydantic-model source imported by at least ten other modules across the codebase: `adapters` (three files), `beliefs`, `candidates`, `control`, `contracts`, `events`, `generate`, and `resolve`. Key NewTypes include `OrgId`, `Ein`, `SegmentId`, `StreamId`, `OrderId`, `EventSeq`, `CandidateId`, `QuantityId`, `HypothesisId`, `DonorId`, `ContactId`, `UnspscFamily`, and `UnspscClass`. These wrappers prevent cross-space confusion at call sites. `OrgSnapshot` is declared in the type system but is not currently consumed by any store function.
+`placer/core/ids` is the authoritative source for all canonical NewTypes and Resolution models. `placer/identity/types.py` re-exports them wholesale (via `# noqa: F401`) for backward compatibility during the ongoing module restructure — it is a shim, not the definition site. Key NewTypes defined in `placer/core/ids` include `OrgId`, `Ein`, `SegmentId`, `StreamId`, `OrderId`, `EventSeq`, `CandidateId`, `QuantityId`, `HypothesisId`, `DonorId`, `ContactId`, `UnspscFamily`, and `UnspscClass`; `ResolutionConfidence`, `ResolutionMethod`, and `Resolution` are also defined there. Pydantic models that remain defined directly in `placer/identity/types.py` include `OrgMemberships`, `OrgRecord`, `OrgSnapshot`, `Segment`, `Stream`, `CrosswalkEdgeKey`, and `ProductIdentity`. `OrgSnapshot` is declared in the type system but is not currently consumed by any store function.
 
 **Read-only debug API**
 Three debug endpoints in `placer/api/debug.py` expose identity data for inspection: `GET /debug/orgs` (ordered listing of orgs by first-seen sequence, returning raw JSONB memberships), `GET /debug/segments` (filterable by status), and `GET /debug/crosswalk` (filterable by UNSPSC family, joining segment definition text and status).
@@ -100,7 +57,7 @@ All four identity spaces are backed by PostgreSQL tables accessed via `psycopg.A
 `OrgRecord` is a Pydantic model containing `org_id`, optional `ein`, a `ResolutionConfidence` enum (`high | medium | provisional`), the integer `EventSeq` of first encounter, and a nested `OrgMemberships` object. `OrgMemberships` carries a list of `SegmentMembership` records (each with `weight` and `confidence` floats), stream affiliations, an optional `OrgRole` enum (`hub | intermediate | terminal`), an NTEE code, and a `SizeBand` enum. This compound structure is persisted as JSONB in the `memberships` column and validated through `OrgMemberships.model_validate` on read. The debug API returns the raw JSONB dict rather than a validated model.
 
 **Resolution confidence and method**
-`ResolutionConfidence` (`high | medium | provisional`) and `ResolutionMethod` (`ein_join | name_address_block | fuzzy_match | provisional`) are `StrEnum` types stored as plain strings in the `orgs.resolution_confidence` column. Only `EIN_JOIN` resolution is active in `resolve_org`; the `name_address_block` and `fuzzy_match` methods are declared in the type system but have no corresponding implementation branches.
+`ResolutionConfidence` (`high | medium | provisional`) and `ResolutionMethod` (`ein_join | name_address_block | fuzzy_match | provisional`) are `StrEnum` types defined in `placer/core/ids` and stored as plain strings in the `orgs.resolution_confidence` column. `placer/identity/store.py` imports them directly from `placer.core.ids`. Only `EIN_JOIN` resolution is active in `resolve_org`; the `name_address_block` and `fuzzy_match` methods are declared in the type system but have no corresponding implementation branches.
 
 **Segment versioning and lineage**
 Segments carry an integer `version` field and a `lineage` list of `SegmentId`s stored as a PostgreSQL array. `mint_segment` always writes `version=1`; the version field is read back from the database on `get_segment` but is not incremented on merge — the lineage array is the primary derivation record. `SegmentStatus` is a `StrEnum` with two values: `active` and `merged`.
@@ -120,6 +77,6 @@ The debug router (`prefix="/debug"`) is registered directly on the FastAPI `app`
 
 **Resolution completeness**: `resolve_org` only resolves via EIN lookup. Callers passing only `name` or `address` will always receive `None`. The `name_address_block` and `fuzzy_match` resolution methods are defined as `StrEnum` values but have no active code paths.
 
-**Type system** (`placer/identity/types.py`): All NewTypes and Pydantic models are importable and in active use across ten modules. `OrgSnapshot` is defined but not used by any store function — it is available as a type but has no persistence surface.
+**Type system**: `placer/core/ids` is the authoritative definition site for all canonical NewTypes (`OrgId`, `Ein`, `SegmentId`, etc.) and Resolution models (`Resolution`, `ResolutionConfidence`, `ResolutionMethod`); all are importable. `placer/identity/types.py` re-exports them for backward compatibility and additionally defines the Pydantic models (`OrgRecord`, `OrgMemberships`, `Segment`, `Stream`, etc.) that remain identity-module-owned. `OrgSnapshot` is defined in `placer/identity/types.py` but not used by any store function — it is available as a type but has no persistence surface.
 
 **Debug API endpoints**: `GET /debug/orgs`, `GET /debug/segments`, and `GET /debug/crosswalk` are registered on the live FastAPI app and reachable without authentication (the debug router carries no auth guard). Availability depends on the server being running and the connection pool being initialized. These endpoints are read-only and return raw database rows; they are not part of the documented external contract (`/recommendations`, `/context-analysis`).

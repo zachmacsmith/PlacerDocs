@@ -2,8 +2,8 @@
 feature: Ingest
 group: New
 first_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
-last_synced: '2026-06-11'
-last_commit: 07baa96d58d04d94add2aabddffd1dfdd90193e9
+last_synced: '2026-06-15'
+last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
   tables:
   - events
@@ -20,17 +20,15 @@ anchors:
   - OrderConstraints
   - Provenance
   - RawItem
-  api_modules:
-  - frontend/src/api.ts::api.ingestOrder
+  api_modules: []
   files:
   - frontend/src/views/**
-  - frontend/src/views/Ingest.tsx
-  - placer/api/debug.py::ingest_order_manual
-  - placer/events/store.py::append
-writes:
+writes: []
+reads:
+- frontend/src/api.ts
 - frontend/src/views/Ingest.tsx
-- placer/api/debug.py::ingest_order_manual
-reads: []
+- placer/api/debug.py
+- placer/core/events.py
 ---
 ## Capability — what it can do
 
@@ -44,7 +42,7 @@ The form captures the complete set of fields that define an `ingest.order` event
 - **Line items** — a dynamic list of `ManualItemInput` rows, each carrying a description, numeric quantity, and a unit chosen from `pallets / cases / lbs / units`. At least one row is always present; the list can be extended or (if more than one row exists) shrunk.
 - **Notes** — optional free-text annotation.
 
-On submission the component calls `api.ingestOrder(body)`, which POSTs a `ManualOrderInput` JSON body to `POST /debug/ingest-order`. The backend handler (`ingest_order_manual`) mints a random `order_id` in the form `manual-<12 hex chars>`, validates the payload against `IngestOrderPayload`, appends an `ingest.order` event to the event spine via `event_store.append`, and inserts a row into the `orders` table with `lifecycle = 'intake'` and `mode = 'placement'`. The response carries `order_id`, `seq` (the event spine sequence number), and a human-readable message.
+On submission the component calls `api.ingestOrder(body)`, which POSTs a `ManualOrderInput` JSON body to `POST /debug/ingest-order`. The backend handler (`ingest_order_manual`) mints a random `order_id` in the form `manual-<12 hex chars>`, validates the payload against `IngestOrderPayload`, appends an `ingest.order` event to the event spine via `placer/core/events.py::append`, and inserts a row into the `orders` table with `lifecycle = 'intake'` and `mode = 'placement'`. The response carries `order_id`, `seq` (the event spine sequence number), and a human-readable message.
 
 If no line items have a non-empty description, the backend falls back to a synthetic item `"(no items specified)"` at the given pallet count, ensuring the payload is always valid.
 
@@ -61,11 +59,11 @@ On success the component renders a green confirmation badge showing the `order_i
 2. Builds typed domain objects: `OrderConstraints`, `RawItem` list, and `IngestOrderPayload`.
 3. Synthesises a default item if the submitted list is empty.
 4. Constructs a `Provenance` record with `source="debug_dashboard"`, `trust_tier=TrustTier.DECLARED_BY_ORG`, and `actor="dashboard_user"` — hardcoded, not derived from any authentication context.
-5. Calls `event_store.append` (in `placer/events/store.py::append`), which validates the payload against `IngestOrderPayload` via `model_validate`, then INSERTs into the `events` table and RETURNs the assigned `seq`.
+5. Calls `event_append` (`placer/core/events.py::append`), which validates the payload against `IngestOrderPayload` via `model_validate`, then INSERTs into the `events` table and RETURNs the assigned `seq`.
 6. INSERTs into the `orders` table within the same connection context (not the same transaction — the two writes are sequential but not atomic).
 7. Returns `{ order_id, seq, message }`.
 
-**Event-type chain** — `EventKind.INGEST_ORDER = "ingest.order"` → `IngestOrderPayload` (containing nested `OrderConstraints` and `list[RawItem]`), registered in `EVENT_PAYLOAD_MODELS` in `placer/events/types.py`. The store validates against this model before every insert.
+**Event-type chain** — `EventKind.INGEST_ORDER = "ingest.order"` → `IngestOrderPayload` (containing nested `OrderConstraints` and `list[RawItem]`), registered in `EVENT_PAYLOAD_MODELS` in `placer/core/events.py`. The append function validates against this model before every insert.
 
 Shared UI primitives used: `Card` (from `frontend/src/components/Card.tsx`) for the outer container and `Badge` (from `frontend/src/components/Table.tsx`) for the green "Created" label in the success state.
 
@@ -77,4 +75,6 @@ There are no route guards declared for this path. There is no changelog configur
 
 There is no authentication on the backend endpoint — provenance is hardcoded to `trust_tier=DECLARED_BY_ORG` and `actor="dashboard_user"` regardless of who makes the request. Any caller with network access to the `/debug` router can ingest orders.
 
-The two database writes (event spine append + `orders` INSERT) are not wrapped in a single transaction; a failure between them could leave an event with no corresponding order row.
+The two database writes (event spine append + `orders` INSERT) execute within the same connection context but are not wrapped in a single transaction; a failure between them could leave an event with no corresponding order row.
+
+The event and type definitions (`EntityRefs`, `EventKind`, `IngestOrderPayload`, `OrderConstraints`, `Provenance`, `RawItem`, etc.) now live in `placer/core/events.py`, which also contains the `append` function — the sole authorised INSERT site into the `events` table, enforced by `tests/conformance/test_sacred_append.py`.

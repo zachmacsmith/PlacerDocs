@@ -5,86 +5,47 @@ first_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 last_synced: '2026-06-15'
 last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
 anchors:
-  tables:
-  - members
+  tables: []
   endpoints: []
-  types:
-  - BridgeFamily
-  - BridgeMediator
-  - CONDITIONAL_TRIGGERS
-  - CORE_BATTERY
-  - CanonicalizeResult
-  - ConditionalTrigger
-  - ElicitationMethod
-  - EnsembleMember
-  - EnsembleMemberStatus
-  - Hypothesis
-  - HypothesisProvenance
-  - MEDIATOR_TO_FAMILY
-  - MemberTogglePayload
-  - MemberType
-  api_modules:
-  - placer/core/events.py
-  - placer/core/member_registry.py
-  - placer/learn/types.py
+  types: []
+  api_modules: []
   files:
-  - placer/core/member_registry.py::_admin_provenance
-  - placer/core/member_registry.py::list_members
-  - placer/core/member_registry.py::register_member
-  - placer/core/member_registry.py::toggle_member
   - placer/members/**
-  - placer/members/__init__.py
-  - placer/members/proposers/__init__.py
-  - placer/members/proposers/bridge_battery.py
-writes:
-- placer/core/member_registry.py
-- placer/members/__init__.py
-- placer/members/proposers/__init__.py
-- placer/members/proposers/bridge_battery.py
+writes: []
 reads:
-- placer/core/events.py
-- placer/core/member_registry.py
-- placer/learn/types.py
 - placer/members/__init__.py
 - placer/members/proposers/__init__.py
 - placer/members/proposers/bridge_battery.py
+- placer/members/proposers/retrieval.py
 ---
 ## Capability — what it can do
 
-The Members feature defines and manages **T3 — the extensible member pool**: the governed registry of all ensemble participants that the Placer Bayesian placement controller permits to operate (spec V2 §VIII.3).
+The Members feature defines and manages the **T3 extensible member pool** — the governed registry of all participants in Placer's Bayesian ensemble (spec V2 §VIII.3). The pool holds four member kinds (`MemberType`): **proposers**, **predictors**, **folds**, and **controllers**, each represented as an `EnsembleMember` record.
 
-The pool tracks four distinct member kinds (via `MemberType`):
-- **Proposer** — constructs candidate sets of recipient organisations.
-- **Predictor** — scores registered belief quantities.
-- **Fold** — participates in learning/validation fold runs.
-- **Controller** — governs placement decisions.
+Three operations on the pool are provided by `placer/core/member_registry.py`:
 
-Each registered `EnsembleMember` carries identity (`member_id`, `owner`, `version`), behavioural metadata (`estimand_conformity`, `prior_weight`, `current_weight`, `sunset_rule`), and a lifecycle status (`active`, `suspended`, `retired`).
+- **`list_members`** — queries the `members` table, optionally filtered by `MemberType`, returning a typed list of `EnsembleMember` objects ordered by registration time.
+- **`register_member`** — admits a new member into the pool via an evented insert: a `system.member_toggle` event is appended to the event spine first, then the `members` row is written referencing it.
+- **`toggle_member`** — transitions an existing member between statuses (`active`, `suspended`, `retired`) via the same evented pattern: event first, row update second.
 
-The `placer/members/proposers/` sub-package groups the concrete proposer implementations. The bridge battery (`bridge_battery.py`) houses the founding proposers: 20 named `BridgeMediator` values organised into five `BridgeFamily` families (Consumption, People, Context, Institutional, Analogical), a four-mediator **core battery** that is always active, and a set of `ConditionalTrigger` rules that activate additional mediators based on item attributes (e.g. `cas_present`, `high_volume`).
+Within the `placer/members/` package, `placer/members/proposers/bridge_battery.py` defines the **bridge battery** — the founding set of proposer members used by the generation pipeline. It enumerates five bridge families (`BridgeFamily`), twenty bridge mediators (`BridgeMediator`), and their groupings, along with a four-mediator always-on `CORE_BATTERY`, five conditional trigger rules (`ConditionalTrigger`), and six elicitation methods (`ElicitationMethod`). Output types for the generation stage (`Hypothesis`, `HypothesisProvenance`, `SegmentAssignment`, `MintProposal`, `CanonicalizeResult`) are also declared there.
 
 ## Implementation — how it works
 
-**Evented write path.** All mutations to the `members` database table are routed exclusively through `placer/core/member_registry.py`. The module enforces the spec V2 §VIII.3 invariant: an event is appended to the sacred event spine *first*, then the derived `members` row is written. A mutation that skips the event would corrupt any downstream comparison that spans it.
+**Governance invariant.** The spec mandates that T3 member-pool changes may only occur through evented writes (spec V2 §VIII.3). `member_registry.py` enforces this by calling `placer.core.events.append` (the sacred single INSERT site) before any `members`-table mutation. Every registration and toggle is therefore fully represented in the append-only `events` table, enabling deterministic replay and historical auditing.
 
-- `register_member` — inserts a new pool member by emitting `system.member_toggle` (from `"unregistered"` → target status) and then `INSERT INTO members … ON CONFLICT DO NOTHING`.
-- `toggle_member` — transitions an existing member between `active`, `suspended`, and `retired` by emitting `system.member_toggle` and then `UPDATE members SET status = …`.
-- `list_members` — read-only query over the `members` table, optionally filtered by `MemberType`.
+**Event kinds.** Both `register_member` and `toggle_member` emit `EventKind.SYSTEM_MEMBER_TOGGLE` (`"system.member_toggle"`), validated at append time against the `MemberTogglePayload` schema (`member_id`, `from_status`, `to_status`, `actor`, `reason`). Payload validation is enforced inside `events.append` via the `EVENT_PAYLOAD_MODELS` registry.
 
-Both write functions use the `_admin_provenance` helper, which stamps events with `source="admin_endpoint"` and `TrustTier.DECLARED_BY_ORG`.
+**Database schema.** The `members` table stores: `member_id`, `member_type`, `owner`, `estimand_conformity` (the quantity a predictor or fold targets), `prior_weight`, `current_weight`, `version`, `status`, `sunset_rule`, `registered_at`, and `last_updated`. Status transitions are done with a bare `UPDATE`; the event record is the authoritative history.
 
-**Event payload.** Toggle events are validated against `MemberTogglePayload` (defined in `placer/core/events.py`), which captures `member_id`, `from_status`, `to_status`, `actor`, and `reason`.
+**Proposer structure.** `placer/members/proposers/bridge_battery.py` enumerates the 20 mediators across 5 families and declares `MEDIATOR_TO_FAMILY` for O(1) lookup. Conditional triggers allow additional mediators to activate based on item properties (e.g. `cas_present`, `high_volume`). The `Hypothesis` type carries the generation output including provenance, bridge identity, claimed generality level (`ClaimedGenerality`), segment assignments, and optional inherited priors. `MintProposal` and `CanonicalizeResult` represent the downstream canonicalization step.
 
-**Bridge battery proposers.** `placer/members/proposers/bridge_battery.py` is self-contained: it declares the `BridgeFamily` / `BridgeMediator` enumerations, the `MEDIATOR_TO_FAMILY` lookup, `CORE_BATTERY` (four always-on mediators), `CONDITIONAL_TRIGGERS`, `ElicitationMethod`, and the `Hypothesis` / `CanonicalizeResult` output types. These types are consumed by the Generate pipeline when constructing hypotheses for candidate retrieval.
-
-**Type ownership.** `EnsembleMember`, `EnsembleMemberStatus`, and `MemberType` are defined in `placer/learn/types.py` and imported by the registry — they are shared with the Learn feature.
+**Separation of concerns.** The `placer/members/**` package owns proposer type definitions; operational CRUD against the pool lives in a core registry module; the `EnsembleMember` and `MemberType` types are defined in a shared learn-types module shared across the learn and governance subsystems. A sibling module (`placer/members/proposers/retrieval.py`) declares retrieval-stream types (`RetrievalStream`, `RetrievalResult`, `FusionResult`, `ResolutionDiagnostics`) used by the resolution pipeline.
 
 ## Availability — is it usable right now
 
-The **data layer is fully implemented**: `placer/core/member_registry.py` provides working `list_members`, `register_member`, and `toggle_member` functions backed by the `members` PostgreSQL table.
+The route `/placer/members` is registered in the feature table and the package root `placer/members/__init__.py` exists, but its body contains only a docstring (`"""T3 — extensible member pool (spec V2 §VIII.3)."""`). No route handler, view component, or controller logic was found in the component file or any file directly routing to `/placer/members`.
 
-The **bridge battery proposer types** (`BridgeFamily`, `BridgeMediator`, `CORE_BATTERY`, `CONDITIONAL_TRIGGERS`) are fully defined in `placer/members/proposers/bridge_battery.py` and are available for use by the Generate pipeline.
+The **backend registry logic** (`list_members`, `register_member`, `toggle_member`) is fully implemented and internally consistent. The **bridge battery type definitions** in `placer/members/proposers/bridge_battery.py` are complete and consumed by the generation pipeline. The **retrieval-stream type definitions** in `placer/members/proposers/retrieval.py` are similarly complete (renamed from their prior location in the resolve subsystem).
 
-However, **no HTTP route or API endpoint for the Members pool is registered** in the feature table. The `/placer/members` route appears in the routing configuration but the component file (`placer/members/__init__.py`) contains only the spec-reference docstring — no handler, view, or UI component is present. The member registry write functions (`register_member`, `toggle_member`) are also not called from any discoverable caller in the codebase beyond their definition; there is no evidence they are wired to an admin API at this time.
-
-**Summary:** The T3 member pool storage and type layer exist; the proposer battery types exist. Direct user- or operator-facing access to read or mutate the member pool via the `/placer/members` route is not yet implemented.
+However, no API endpoint, HTTP route handler, or frontend component was found that exposes member-pool management to callers at the `/placer/members` path. Code presence does not confirm user-facing availability. The feature should be treated as **infrastructure-complete but interface-absent** — the pool can be queried and mutated programmatically, but no exposed endpoint or UI surface for doing so was confirmed.
