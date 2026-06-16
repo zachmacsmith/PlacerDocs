@@ -22,6 +22,7 @@ anchors:
   - placer/api/server.py::recommendations
 writes: []
 reads:
+- placer/adapters/shadow.py
 - placer/api/server.py
 ---
 ## Capability — what it can do
@@ -44,6 +45,8 @@ The server is CORS-enabled for `localhost:5173`, `localhost:5174`, `app.simpli.s
 
 **Live pipeline (M1):** After validating the request, the handler acquires a database connection and delegates to `placer.pipeline.recommend`, which executes the full sequence: *propose → gate → value → rank*. Concretely, it fetches or generates candidates for the order via `placer.pipeline`, evaluates hard-stop gates, scores each passing candidate using Bayesian posteriors for five signals (`p_want`, `p_fit_residual`, `p_cap`, `p_resp`, `p_accept`), sorts by descending `p_accept`, and returns the top-`n` results. The `factor_breakdown` field on each `CharityRecommendation` exposes these five probability values plus a `gates_pass` boolean. `metadata` in the response includes `placer_version`, `total_proposed`, `gate_blocked`, `scored`, and `returned` counts.
 
+**Shadow comparison:** After the Placer response is built and returned to the caller, the handler fires a non-blocking `asyncio.create_task` that calls `shadow_compare` from `placer.adapters`. This task calls the incumbent Simpli mission-match worker at `INCUMBENT_URL/recommendations` with the same request body, then logs both responses as a `DECISION_VALUATION_SNAPSHOT` event (via `placer.core`) for later offline comparison. The incumbent's answer is never served — Placer's own response is returned immediately and the shadow call cannot delay or break it (all errors are logged and swallowed). Shadow comparison is the mandatory evaluation gate before any serving flip (spec §2.2). If `INCUMBENT_URL` is unset the task exits silently, making shadow mode opt-in for local development.
+
 ## Availability — is it usable right now
 
 The route `POST /recommendations` is **present in code, fully wired, and capable of returning real ranked recommendations** once the server is running with the required environment and data prerequisites satisfied.
@@ -51,6 +54,7 @@ The route `POST /recommendations` is **present in code, fully wired, and capable
 **Runtime prerequisites that must all be satisfied before the server starts:**
 - `DATABASE_URL` must be set and point to a reachable Postgres instance; the connection pool (managed via `placer.db`) is initialised at startup and startup fails without it.
 - `API_KEYS` must contain at least one non-empty value; an absent or empty variable causes every request to fail with HTTP 401.
+- `INCUMBENT_URL` (optional) — if set, shadow comparison against the incumbent worker is active on every request. If unset, the shadow task exits immediately without making any external calls. Shadow mode is required before any production serving flip per spec §2.2; omitting this variable is safe for local development and CI.
 
 **Data prerequisites for non-empty results:**
 - An order record matching the supplied `order_id` must exist in the database. If no order is found, the pipeline returns immediately with `metadata.error = "order not found"` and an empty recommendations list.

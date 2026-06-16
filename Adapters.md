@@ -3,7 +3,7 @@ feature: Adapters
 group: Placer
 first_commit: 5499bc5a8c1f45be4e6cdc23b3f7414d926340f0
 last_synced: '2026-06-16'
-last_commit: cf05efbdebcc895b1cbd9fbfa7376868d3584da1
+last_commit: e75bcb47650c6c56370cc10193be5f08ae3490e8
 anchors:
   tables: []
   endpoints: []
@@ -14,6 +14,7 @@ anchors:
 writes: []
 reads:
 - placer/adapters/seed_historical.py
+- placer/adapters/shadow.py
 - placer/adapters/simpli_outcomes.py
 ---
 ## Capability — what it can do
@@ -31,6 +32,8 @@ The Adapters feature provides the **sole schema-coupling boundary** between Plac
 - **`seed_historical`** — a one-shot CLI script (M1 §4) that bootstraps the belief system from Simpli's full history. Pulls all resolved outcomes from epoch (2020-01-01) via `SimpliOutcomePoller`, then runs the fold loop in batches of 5,000 events until all events are consumed and initial belief checkpoints are written. Also provides `count_simpli_outcomes()` for a quick pre-seed inventory of available outcomes in Simpli. Run with `python -m placer.adapters.seed_historical`.
 
 Abstract contracts for all three Simpli adapters (and for M2 retrieval and LLM inference) are declared in **`types.py`**: `SimpliOrderAdapter`, `SimpliWritebackAdapter`, `OutcomeSource`, `M2RetrievalAdapter`, and `InferenceAdapter`. These ABCs define the swap point that allows, for example, the polling outcome adapter to be replaced by a webhook receiver without touching downstream code.
+
+- **`shadow`** (`shadow/v1`) — a fire-and-forget comparison adapter (spec §2.2, §X M1) that calls the incumbent worker on every recommendation request alongside Placer, then logs both responses as a `DECISION_VALUATION_SNAPSHOT` event for offline evaluation. The incumbent's answer is never served — Placer's own response is always returned to the caller. Shadow mode is mandatory before any serving flip (M2); the baseline gate (§VII.3) evaluates from the accumulated comparison events. Activated by the `INCUMBENT_URL` environment variable; if the variable is absent, shadow comparison is silently skipped.
 
 - **`synthetic`** — a full-loop harness (spec V2 §VIII.2, §X M0) that exercises the entire ingest → identity → candidates → propensity → dispatch → outcomes → routing-table folds → checkpoint refresh → resolver read pipeline with zero external credentials. It implements `OutcomeSourceContract` via `SyntheticOutcomeSource`, generates plausible scripted outcomes for contacted candidates, and performs inline belief-checkpoint folds using the routing table. Intended for debugging mechanics, not threshold tuning. Run with `python -m placer.adapters.synthetic`.
 
@@ -55,6 +58,9 @@ Before appending each event, both private methods call `_resolve_or_mint_org(con
 **Historical seeding (`seed_historical`)**  
 `seed_outcomes()` instantiates a `SimpliOutcomePoller` with a hard-coded epoch of 2020-01-01 UTC, ingests all resolved outcomes, then calls `_fold_all()`. `_fold_all()` runs `fold_events()` in a loop with `batch_size=5000`, committing after each batch and advancing the watermark, until a batch returns zero events processed. The entry point `main()` first calls `count_simpli_outcomes()` to log a pre-seed inventory (counting rows in `mission_match_resolved` where `client_approved IS NOT NULL` and all rows in `m2_workflow_charity_status_events`), then executes the full seed.
 
+**Shadow comparison (`shadow`)**  
+`shadow_compare(order_id, request_body, placer_response, api_key)` is designed as a fire-and-forget coroutine: all errors are caught and logged, never re-raised, so shadow activity can never break the serving path. If `INCUMBENT_URL` is unset the function returns immediately. When active, `_call_incumbent()` issues a `POST {INCUMBENT_URL}/recommendations` via `httpx.AsyncClient` with a 30-second timeout. The comparison is logged as a `DECISION_VALUATION_SNAPSHOT` event containing summarised EIN lists (up to 20 deep) and a Jaccard-based overlap metric (`intersection_count`, `union_count`, `jaccard`, `placer_only`, `incumbent_only`) computed over the full recommendation sets.
+
 **Reason-code mapping**  
 `map_reason_text()` applies an ordered list of regex rules against lowercased free text. First match wins; no match returns `ReasonCode.OTHER`. The raw text is always stored in `OutcomePayload.reason_text` regardless of mapping outcome. The taxonomy covers capacity (`CAP_FULL_NOW`, `CAP_VOLUME_EXCEEDED`), want (`WANT_NO_USE`, `WANT_ALREADY_SUPPLIED`, `WANT_LOW_PRIORITY`), fit (`FIT_RESTRICTION_CONFLICT`, `FIT_GEOGRAPHIC`, `FIT_REGULATORY`), and response (`RESP_NO_RESPONSE`, `RESP_DECLINED`) families.
 
@@ -69,6 +75,8 @@ Before appending each event, both private methods call `_resolve_or_mint_org(con
 **`simpli_outcomes` (outcome poller):** `SimpliOutcomePoller` is present and fully implements the `OutcomeSource` interface, including org-identity resolution and `EntityRefs` enrichment via `_resolve_or_mint_org()` and `_lookup_org_edges()`. No scheduler, background task, or route that calls `SimpliOutcomePoller.pull()` was found in the codebase. The poller is available as a library class but is not actively scheduled.
 
 **`seed_historical` (historical bootstrap):** `seed_historical.py` is present and runnable directly (`python -m placer.adapters.seed_historical`). It requires both `SIMPLI_PLATFORM_URL` (for Simpli access) and `DATABASE_URL` (for Placer's own Postgres). It is a one-shot operator tool targeting M1 §4 bootstrap — not a production component invoked by any route or scheduled task.
+
+**`shadow` (incumbent comparison):** `shadow.py` is present and importable. `shadow_compare()` is callable but is not wired to any HTTP endpoint or recommendation handler visible in the current codebase — it would need to be explicitly invoked from the serving path (e.g. the `POST /recommendations` handler) to become active. When `INCUMBENT_URL` is absent the function is a no-op, so it introduces no runtime risk. It is available as a library function only; integration into the live serving path is a future step gated on M2 preparation.
 
 **`synthetic` (full-loop harness):** The synthetic harness is present and runnable directly (via its `__main__` guard). It requires only a `DATABASE_URL` environment variable pointing to a local Placer Postgres instance — no Simpli credentials needed. It is a developer/debug tool, not a production component.
 

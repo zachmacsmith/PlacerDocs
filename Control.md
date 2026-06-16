@@ -2,8 +2,8 @@
 feature: Control
 group: Placer
 first_commit: c66cac868aea2ad3d45474337649f15a7c7db058
-last_synced: '2026-06-15'
-last_commit: 6dc428c8cfbf577dc8254a42c8b1873db3babcd4
+last_synced: '2026-06-16'
+last_commit: e75bcb47650c6c56370cc10193be5f08ae3490e8
 anchors:
   tables: []
   endpoints: []
@@ -18,9 +18,12 @@ anchors:
   - placer/controllers/**
 writes: []
 reads:
+- placer/controllers/dispatch.py
+- placer/controllers/gate_evaluator.py
 - placer/controllers/types.py
 - placer/core/contracts.py
 - placer/core/events.py
+- placer/pipeline.py
 ---
 ## Capability — what it can do
 
@@ -40,7 +43,7 @@ All types are defined in a single module, `placer/controllers/types.py`, with no
 
 **Type graph.** `Trigger` imports `OrderId` from `placer.core.ids` (a `NewType` wrapper over `str`) and `TriggerKind` from the same file. `StepResult` imports `OrderWorldState` from `placer.identity.candidates`, which is the full blackboard model: lifecycle state, deadline, remaining volume, hypotheses list, candidates list, contact and accept counts, and placed volume. This means every controller step that returns a state snapshot carries the complete order picture.
 
-**Two-controller design.** The module docstring (aligned with spec §6 / architecture §5) names two distinct controllers: a per-order controller that sequences operators for a single order, and a global allocator that manages cross-order resource constraints. `AllocatorState` is the state bag for the second controller; the per-order controller's state lives entirely in `OrderWorldState`. No concrete controller implementations are present in `placer/controllers/` — the contracts (`AllocatorContract`, `DispatchContract`, `ValueContract`, etc.) live in the core contracts module, and implementations are expected to live behind those abstract interfaces.
+**Two-controller design.** The module docstring (aligned with spec §6 / architecture §5) names two distinct controllers: a per-order controller that sequences operators for a single order, and a global allocator that manages cross-order resource constraints. `AllocatorState` is the state bag for the second controller; the per-order controller's state lives entirely in `OrderWorldState`. Concrete implementations are now present under `placer/controllers/`: `dispatch.py` provides the per-order dispatch controller, and `gate_evaluator.py` provides hard-gate evaluation. The abstract contracts (`AllocatorContract`, `DispatchContract`, `ValueContract`, etc.) still live in the core contracts module.
 
 **Statelesness contract.** The docstring explicitly declares the controller as a stateless function: it reads `OrderWorldState`, selects the next operator per the active policy, executes, appends events, and returns. `StepResult.events_emitted` is the observable record of that append step.
 
@@ -52,10 +55,12 @@ All types are defined in a single module, `placer/controllers/types.py`, with no
 
 **Type definitions — present.** All types in `placer/controllers/types.py` (`TriggerKind`, `Trigger`, `ControllerAction`, `StepResult`, `AllocatorState`) are fully defined and importable.
 
-**Concrete controller logic — absent.** No file under `placer/controllers/` other than `types.py` (and the package `__init__.py`) was found in the codebase. There is no concrete per-order controller or global allocator implementation present; only the abstract `AllocatorContract` in the core contracts module and the type schema here. Code-presence of the type layer does not imply a runnable controller.
+**Dispatch controller — present.** `placer/controllers/dispatch.py` is a concrete implementation of the per-order dispatch controller (spec §6, governing rule 4). Its `handle_trigger` entry point accepts a `Trigger` and routes to one of three internal paths based on `TriggerKind`: `NEW_ORDER` pipelines fresh candidates, `OUTCOME_ARRIVED` and `CLOCK_TICK` both re-score and re-dispatch after new data. Batches are capped at 10 candidates with a minimum `p_accept` threshold of 0.05. The propensity-before-actuation guarantee is enforced at this layer: a `DECISION_VALUATION_SNAPSHOT` event is committed before any write to the downstream platform.
 
-**`from placer.controllers` imports — zero.** Search across the full codebase found no module importing from `placer.controllers`. The types are defined but not yet wired into any active pipeline path, API handler, or script.
+**Gate evaluator — present and wired.** `placer/controllers/gate_evaluator.py` implements hard-gate evaluation (M1 §5). Its `evaluate_gates_for_candidates` function is imported and called by the pipeline module, making it an active path in candidate processing. It loads `GateInstance` records from the `gate_instances` table, checks scope (global / org-scoped / order-scoped), and evaluates `HARD_GATE` predicates including `HAZMAT_CLASS`, `REFRIGERATION`, `GEOGRAPHIC_DISTANCE`, `GEOGRAPHIC_EXCLUSION`, `ORG_RESTRICTION`, `ORG_CAPABILITY`, `REGULATORY_BLOCK`, and `LOT_SIZE`. Candidates that fail any applicable gate are stamped `GATE_BLOCKED` with a reason string.
 
-**`AllocatorState` defaults.** The $50/hr `lambda_ops` default and the seed-demo scripts (`scripts/seed_demo.py`) both use the same value, indicating the default is operative in demo/synthetic environments. Whether it is read from a live `AllocatorState` instance or hard-coded at call sites in those scripts cannot be confirmed from the source alone.
+**Global allocator — absent.** No concrete global allocator implementation was found. `AllocatorState` and the abstract `AllocatorContract` in the core contracts module define the interface, but no live cross-order allocator drives it. Code-presence of the type layer does not imply a runnable allocator.
+
+**`AllocatorState` defaults.** The $50/hr `lambda_ops` default is operative in demo/synthetic environments. Whether it is read from a live `AllocatorState` instance or hard-coded at call sites in those environments cannot be confirmed from the source alone.
 
 **No changelog.** No changelog is configured; no changelog-vs-code discrepancies to flag.
